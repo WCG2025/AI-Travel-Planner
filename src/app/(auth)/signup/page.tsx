@@ -71,11 +71,16 @@ export default function SignupPage() {
   };
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">创建账户</CardTitle>
-        <CardDescription className="text-center">
-          输入您的信息以创建新账户
+    <Card className="border-2 border-orange-200 shadow-2xl shadow-orange-100">
+      <CardHeader className="space-y-1 text-center">
+        <div className="mx-auto w-16 h-16 bg-gradient-to-br from-orange-400 to-pink-500 rounded-2xl flex items-center justify-center mb-4">
+          <span className="text-3xl">✨</span>
+        </div>
+        <CardTitle className="text-3xl font-black bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent">
+          开始你的旅程
+        </CardTitle>
+        <CardDescription className="text-center text-gray-600">
+          创建账户，开启精彩旅行规划
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -119,15 +124,19 @@ export default function SignupPage() {
             )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? '注册中...' : '注册'}
+          <Button 
+            type="submit" 
+            className="w-full bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-600 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all" 
+            disabled={loading}
+          >
+            {loading ? '注册中...' : '开始旅程 ✈️'}
           </Button>
         </form>
 
-        <div className="mt-4 text-center text-sm">
+        <div className="mt-6 text-center text-sm">
           已有账户？{' '}
-          <Link href="/login" className="text-blue-600 hover:underline">
-            立即登录
+          <Link href="/login" className="text-orange-600 hover:text-pink-600 font-semibold hover:underline transition-colors">
+            立即登录 →
           </Link>
         </div>
       </CardContent>
