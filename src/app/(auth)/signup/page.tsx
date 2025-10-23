@@ -52,7 +52,7 @@ export default function SignupPage() {
 
       toast({
         title: '注册成功！',
-        description: '请检查您的邮箱以验证账户',
+        description: '即将跳转到登录页面，您现在可以登录使用了',
       });
 
       // 延迟跳转，让用户看到提示
