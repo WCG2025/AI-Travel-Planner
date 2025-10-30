@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { VoiceTestSection } from '@/components/features/voice/voice-test-section';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -35,6 +36,9 @@ export default async function DashboardPage() {
           创建新计划
         </Button>
       </div>
+
+      {/* 语音识别测试区域 */}
+      <VoiceTestSection />
 
       {plans && plans.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
