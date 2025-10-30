@@ -6,16 +6,22 @@ import { zhCN } from 'date-fns/locale';
  * 生成系统提示词
  */
 export function getSystemPrompt(): string {
-  return `你是一位专业的旅行规划师。
+  return `你是专业的旅行规划师，必须严格遵守 JSON 格式规范。
 
-重要要求：
-1. 必须严格返回有效的 JSON 格式
-2. 所有字段名和字符串值必须使用双引号
-3. 数字和布尔值不加引号
-4. 不要在 JSON 中使用中文标点符号（如：、，）
-5. 确保 JSON 格式正确可解析
+【格式要求-必须遵守】：
+1. 所有字段名加双引号："title"
+2. 所有字符串值加双引号："北京"
+3. 所有数组元素加双引号：["建议1", "建议2"]
+4. 数字不加引号：100
+5. 使用英文标点：冒号:  逗号,  引号"
+6. 从头到尾保持格式一致
 
-使用简体中文内容，但保持标准 JSON 格式。`;
+【禁止】：
+- 不要使用中文标点：、，：
+- 不要省略引号
+- 不要改变格式
+
+格式比内容更重要，必须保证 JSON 可解析。`;
 }
 
 /**
@@ -97,15 +103,17 @@ ${input.specialRequirements ? `\n特殊要求：${input.specialRequirements}` : 
   }
 }
 
-**关键规则：**
-1. 所有字段名必须加双引号："title"
-2. 所有字符串值必须加双引号："北京"
-3. 数字不加引号：100
-4. 数组使用方括号：["a", "b"]
-5. 对象使用花括号：{"key": "value"}
-6. type 只能是：attraction, meal, transportation, accommodation, shopping, entertainment, other
-7. 每天3-5个活动
-8. 不要输出代码块标记（\`\`\`json），直接输出 JSON`;
+**严格规则（从第一行到最后一行都要遵守）：**
+1. 字段名加引号："time": "09:00" ✅  time: 09:00 ❌
+2. 字符串值加引号："location": "北京" ✅  location: 北京 ❌
+3. 数组元素加引号："tips": ["建议1"] ✅  tips: [建议1] ❌
+4. 数字不加引号："cost": 100 ✅  "cost": "100" ❌
+5. 使用英文冒号和逗号：":"  ","  ✅  "：" "，" ❌
+6. type必须是：attraction, meal, transportation, accommodation, shopping, entertainment, other
+7. 每天3-5个活动，保持简洁
+8. 直接输出JSON，不要markdown标记
+
+**重要**：整个JSON从头到尾格式必须完全一致，后面不能偷懒！`;
   
   return prompt;
 }
@@ -145,11 +153,48 @@ export function parseAIResponse(content: string): any {
       .replace(/：/g, ':')  // 中文冒号
       .replace(/，/g, ',')  // 中文逗号
       .replace(/"/g, '"')  // 中文引号
-      .replace(/"/g, '"'); // 中文引号
+      .replace(/"/g, '"')  // 中文引号
+      .replace(/'/g, '"')  // 单引号替换为双引号
+      .replace(/'/g, '"'); // 单引号替换为双引号
     
-    // 2. 修复缺少引号的字段名（常见模式）
-    // 例如：time:09:00 -> "time":"09:00"
-    jsonStr = jsonStr.replace(/([,\{]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+    // 2. 修复缺少引号的字段名
+    // time: -> "time":
+    jsonStr = jsonStr.replace(/([,\{\n\r]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+    
+    // 3. 修复缺少引号的字符串值（中文内容）
+    // : 值, -> : "值",
+    // : 值} -> : "值"}
+    // : 值] -> : "值"]
+    jsonStr = jsonStr.replace(/:\s*([^\d\[\{"][^,\}\]\n]*?)([,\}\]])/g, (match, value, ending) => {
+      // 如果值已经有引号，或者是 true/false/null，不处理
+      if (value.trim().match(/^["']|^true$|^false$|^null$/)) {
+        return match;
+      }
+      // 去掉值前后的空格和中文标点
+      const cleanValue = value.trim().replace(/，$/, '').replace(/：$/, '');
+      return `: "${cleanValue}"${ending}`;
+    });
+    
+    // 4. 修复数组中缺少引号的字符串
+    // [值1, 值2] -> ["值1", "值2"]
+    jsonStr = jsonStr.replace(/\[([^\]]*)\]/g, (match, content) => {
+      // 如果数组为空或已经有引号，不处理
+      if (!content.trim() || content.includes('"')) {
+        return match;
+      }
+      // 分割并给每个元素加引号
+      const items = content.split(',').map(item => {
+        const trimmed = item.trim();
+        // 如果是数字、true、false、null，不加引号
+        if (trimmed.match(/^\d+$|^true$|^false$|^null$/)) {
+          return trimmed;
+        }
+        // 移除已有的引号再加
+        const cleaned = trimmed.replace(/^["']|["']$/g, '');
+        return `"${cleaned}"`;
+      });
+      return `[${items.join(', ')}]`;
+    });
     
     // 解析 JSON
     const parsed = JSON.parse(jsonStr);
