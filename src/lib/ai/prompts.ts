@@ -57,23 +57,20 @@ export function getTravelPlanPrompt(input: TravelPlanInput): string {
     }
   }
   
-  const prompt = `请为我制定一份详细的旅行计划：
+  const prompt = `制定${days}天${input.destination}旅行计划：
 
-【基本信息】
+基本信息：
 - 目的地：${input.destination}
-- 出发日期：${format(new Date(input.startDate), 'yyyy年MM月dd日', { locale: zhCN })}
-- 结束日期：${format(new Date(input.endDate), 'yyyy年MM月dd日', { locale: zhCN })}
-- 总天数：${days}天
-- 总预算：${input.budget ? `约 ${input.budget.toLocaleString()} 元` : '灵活安排'}
-- 同行人数：${input.travelers || 1}人${preferencesText}
+- 日期：${format(new Date(input.startDate), 'MM月dd日', { locale: zhCN })}-${format(new Date(input.endDate), 'MM月dd日', { locale: zhCN })}（${days}天）
+- 预算：${input.budget ? `${input.budget}元` : '灵活'}
+- 人数：${input.travelers || 1}人${preferencesText}
+${input.specialRequirements ? `\n特殊要求：${input.specialRequirements}` : ''}
 
-${input.specialRequirements ? `【特殊需求】\n${input.specialRequirements}\n` : ''}
-【输出要求】
-请严格按照以下 JSON 格式返回旅行计划（不要包含任何其他文字，只返回 JSON）：
+输出要求（严格JSON格式，无额外文字）：
 
 \`\`\`json
 {
-  "title": "行程标题，简洁有吸引力",
+  "title": "行程标题",
   "destination": "${input.destination}",
   "startDate": "${input.startDate}",
   "endDate": "${input.endDate}",
@@ -82,63 +79,33 @@ ${input.specialRequirements ? `【特殊需求】\n${input.specialRequirements}\
     {
       "day": 1,
       "date": "${input.startDate}",
-      "title": "第1天的主题，如：初识${input.destination}",
+      "title": "第1天主题",
       "activities": [
         {
           "time": "09:00",
-          "endTime": "12:00",
-          "title": "活动名称",
-          "description": "详细描述这个活动，包括看点、体验等",
-          "location": "具体地点名称",
-          "address": "详细地址",
-          "duration": "3小时",
+          "title": "活动名",
+          "description": "活动描述",
+          "location": "地点",
           "cost": 100,
           "type": "attraction",
-          "tips": [
-            "实用建议1",
-            "实用建议2"
-          ],
-          "bookingInfo": "预订信息（如需要）"
+          "tips": ["建议"]
         }
       ],
-      "estimatedCost": 500,
-      "notes": "当天的特别提醒或建议"
+      "estimatedCost": 500
     }
   ],
   "summary": {
-    "totalCost": 5000,
-    "highlights": [
-      "行程亮点1",
-      "行程亮点2"
-    ],
-    "tips": [
-      "总体建议1",
-      "总体建议2"
-    ],
-    "warnings": [
-      "注意事项1",
-      "注意事项2"
-    ],
-    "packingList": [
-      "必带物品1",
-      "必带物品2"
-    ]
+    "highlights": ["亮点"],
+    "tips": ["建议"]
   }
 }
 \`\`\`
 
-【重要说明】
-1. 每天安排 3-5 个活动，时间分配合理
-2. activity 的 type 可选值：attraction（景点）、meal（用餐）、transportation（交通）、accommodation（住宿）、shopping（购物）、entertainment（娱乐）、other（其他）
-3. 费用要符合预算，并给出合理的估算
-4. 时间安排要考虑交通、用餐、休息
-5. 推荐的地点要真实存在且适合旅游
-6. 每个活动的描述要详细、实用
-7. 提供的建议要具体、可操作
-8. 如果预算有限，优先推荐性价比高的选择
-9. 考虑季节因素，推荐合适的活动
-
-请现在就生成这份旅行计划，记住：只返回 JSON，不要有其他内容。`;
+要求：
+1. 每天3-5个活动，时间合理
+2. type可选：attraction/meal/transportation/accommodation/shopping/entertainment/other
+3. 控制在预算内
+4. 只返回JSON，无其他内容`;
   
   return prompt;
 }

@@ -11,7 +11,7 @@ export const AI_CONFIG = {
   // 生成参数
   generation: {
     temperature: 0.7,       // 温度：0.7 平衡创造力和准确性
-    maxTokens: 4000,        // 最大 token 数
+    maxTokens: 3000,        // 最大 token 数（降低以加快生成）
     topP: 0.9,              // Top-p 采样
     presencePenalty: 0.1,   // 存在惩罚
     frequencyPenalty: 0.1,  // 频率惩罚
