@@ -119,93 +119,159 @@ ${input.specialRequirements ? `\n特殊要求：${input.specialRequirements}` : 
 }
 
 /**
- * 解析 AI 返回的 JSON
+ * 解析 AI 返回的 JSON（超强版）
  */
 export function parseAIResponse(content: string): any {
+  console.log('📝 开始解析 AI 返回内容，长度:', content.length);
+  
   try {
-    // 移除可能的 markdown 代码块标记
+    // 步骤 1: 清理和提取
     let jsonStr = content.trim();
     
-    // 移除 ```json 和 ``` 标记
+    // 移除 markdown 代码块
     if (jsonStr.startsWith('```json')) {
       jsonStr = jsonStr.slice(7);
     } else if (jsonStr.startsWith('```')) {
       jsonStr = jsonStr.slice(3);
     }
-    
     if (jsonStr.endsWith('```')) {
       jsonStr = jsonStr.slice(0, -3);
     }
-    
     jsonStr = jsonStr.trim();
     
-    // 尝试找到完整的 JSON 对象（从第一个 { 到最后一个 }）
+    // 提取完整的 JSON 对象
     const firstBrace = jsonStr.indexOf('{');
     const lastBrace = jsonStr.lastIndexOf('}');
     
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+    if (firstBrace === -1 || lastBrace === -1) {
+      throw new Error('找不到有效的 JSON 结构（缺少大括号）');
     }
     
-    // 尝试修复常见的格式问题
-    // 1. 替换中文标点为英文标点
+    jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+    console.log('✂️ 提取 JSON 片段，长度:', jsonStr.length);
+    
+    // 步骤 2: 标点符号修复
     jsonStr = jsonStr
-      .replace(/：/g, ':')  // 中文冒号
-      .replace(/，/g, ',')  // 中文逗号
-      .replace(/"/g, '"')  // 中文引号
-      .replace(/"/g, '"')  // 中文引号
-      .replace(/'/g, '"')  // 单引号替换为双引号
-      .replace(/'/g, '"'); // 单引号替换为双引号
+      .replace(/：/g, ':')   // 中文冒号
+      .replace(/，/g, ',')   // 中文逗号
+      .replace(/"/g, '"')   // 中文左引号
+      .replace(/"/g, '"')   // 中文右引号
+      .replace(/'/g, '"')   // 左单引号
+      .replace(/'/g, '"');  // 右单引号
     
-    // 2. 修复缺少引号的字段名
-    // time: -> "time":
-    jsonStr = jsonStr.replace(/([,\{\n\r]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+    // 步骤 3: 修复缺少引号的字段名（最激进）
+    // 匹配所有无引号的字段名
+    jsonStr = jsonStr.replace(/([,\{\n\r\s])([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
     
-    // 3. 修复缺少引号的字符串值（中文内容）
-    // : 值, -> : "值",
-    // : 值} -> : "值"}
-    // : 值] -> : "值"]
-    jsonStr = jsonStr.replace(/:\s*([^\d\[\{"][^,\}\]\n]*?)([,\}\]])/g, (match, value, ending) => {
-      // 如果值已经有引号，或者是 true/false/null，不处理
-      if (value.trim().match(/^["']|^true$|^false$|^null$/)) {
+    // 步骤 4: 修复缺少引号的字符串值（升级版）
+    // 处理 : value, 或 : value} 或 : value]
+    jsonStr = jsonStr.replace(/:\s*([^"\d\[\{\-][^,\}\]]*?)([,\}\]])/g, (match, value, ending) => {
+      const trimmed = value.trim();
+      // 跳过 true/false/null
+      if (trimmed === 'true' || trimmed === 'false' || trimmed === 'null') {
+        return `: ${trimmed}${ending}`;
+      }
+      // 跳过已经有引号的
+      if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
         return match;
       }
-      // 去掉值前后的空格和中文标点
-      const cleanValue = value.trim().replace(/，$/, '').replace(/：$/, '');
-      return `: "${cleanValue}"${ending}`;
+      // 清理并加引号
+      const cleaned = trimmed.replace(/，$/, '').replace(/：$/, '');
+      return `: "${cleaned}"${ending}`;
     });
     
-    // 4. 修复数组中缺少引号的字符串
-    // [值1, 值2] -> ["值1", "值2"]
-    jsonStr = jsonStr.replace(/\[([^\]]*)\]/g, (match, content) => {
-      // 如果数组为空或已经有引号，不处理
-      if (!content.trim() || content.includes('"')) {
-        return match;
-      }
-      // 分割并给每个元素加引号
-      const items = content.split(',').map(item => {
-        const trimmed = item.trim();
-        // 如果是数字、true、false、null，不加引号
-        if (trimmed.match(/^\d+$|^true$|^false$|^null$/)) {
-          return trimmed;
+    // 步骤 5: 修复数组中缺少引号的字符串（递归处理）
+    let prevJsonStr = '';
+    let iterations = 0;
+    const maxIterations = 5;
+    
+    while (prevJsonStr !== jsonStr && iterations < maxIterations) {
+      prevJsonStr = jsonStr;
+      iterations++;
+      
+      // 查找数组并修复
+      jsonStr = jsonStr.replace(/\[([^\[\]]*?)\]/g, (match, content) => {
+        if (!content.trim()) return '[]';
+        
+        // 分割并处理每个元素
+        const items: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        let depth = 0;
+        
+        for (let i = 0; i < content.length; i++) {
+          const char = content[i];
+          
+          if (char === '"' && (i === 0 || content[i - 1] !== '\\')) {
+            inQuotes = !inQuotes;
+            current += char;
+          } else if (!inQuotes && (char === '{' || char === '[')) {
+            depth++;
+            current += char;
+          } else if (!inQuotes && (char === '}' || char === ']')) {
+            depth--;
+            current += char;
+          } else if (!inQuotes && char === ',' && depth === 0) {
+            items.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
         }
-        // 移除已有的引号再加
-        const cleaned = trimmed.replace(/^["']|["']$/g, '');
-        return `"${cleaned}"`;
+        
+        if (current.trim()) {
+          items.push(current.trim());
+        }
+        
+        // 给每个元素加引号（如果需要）
+        const fixedItems = items.map(item => {
+          // 已经有引号、是数字、是对象、是布尔值
+          if (
+            item.startsWith('"') ||
+            item.startsWith('{') ||
+            item.startsWith('[') ||
+            /^\d+$/.test(item) ||
+            item === 'true' ||
+            item === 'false' ||
+            item === 'null'
+          ) {
+            return item;
+          }
+          // 去掉可能的旧引号再加新的
+          const cleaned = item.replace(/^["']|["']$/g, '');
+          return `"${cleaned}"`;
+        });
+        
+        return `[${fixedItems.join(',')}]`;
       });
-      return `[${items.join(', ')}]`;
-    });
+    }
     
-    // 解析 JSON
+    // 步骤 6: 修复尾随逗号
+    jsonStr = jsonStr.replace(/,(\s*[}\]])/g, '$1');
+    
+    console.log('🔧 修复后的 JSON 前200字符:', jsonStr.substring(0, 200));
+    console.log('🔧 修复后的 JSON 后200字符:', jsonStr.substring(Math.max(0, jsonStr.length - 200)));
+    
+    // 步骤 7: 尝试解析
     const parsed = JSON.parse(jsonStr);
     
-    console.log('✅ JSON 解析成功');
+    console.log('✅ JSON 解析成功！');
     return parsed;
+    
   } catch (error: any) {
     console.error('❌ JSON 解析失败:', error.message);
-    console.error('尝试解析的内容（前500字符）:', content.substring(0, 500));
-    console.error('尝试解析的内容（后500字符）:', content.substring(Math.max(0, content.length - 500)));
-    throw new Error('AI 返回的内容格式不正确，无法解析为 JSON。请尝试更短的行程（2-3天）或重新生成。');
+    console.error('📄 原始内容（前300字符）:', content.substring(0, 300));
+    console.error('📄 原始内容（中300字符）:', content.substring(Math.floor(content.length / 2) - 150, Math.floor(content.length / 2) + 150));
+    console.error('📄 原始内容（后300字符）:', content.substring(Math.max(0, content.length - 300)));
+    
+    // 提供更有用的错误信息
+    if (error.message.includes('Unexpected token')) {
+      throw new Error(`JSON 格式错误：${error.message}。AI 可能在中途改变了格式。`);
+    } else if (error.message.includes('Unexpected end')) {
+      throw new Error('JSON 不完整，AI 可能被截断了。请尝试更短的行程。');
+    } else {
+      throw new Error(`AI 返回的内容格式不正确，无法解析为 JSON：${error.message}`);
+    }
   }
 }
 

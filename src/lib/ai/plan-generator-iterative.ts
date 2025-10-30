@@ -119,21 +119,20 @@ async function generatePlanOverview(
   input: TravelPlanInput,
   days: number
 ): Promise<{ title: string }> {
-  const prompt = `为以下旅行生成一个吸引人的标题：
+  const systemPrompt = `你是专业的JSON生成器。规则：
+1. 只返回纯JSON，不要任何其他文字
+2. 所有键和字符串值必须用双引号
+3. 不要添加markdown代码块标记`;
 
-目的地：${input.destination}
-天数：${days}天
-预算：${input.budget ? `${input.budget}元` : '灵活'}
+  const prompt = `生成标题：${input.destination}${days}天游
 
-只返回JSON格式：
-{
-  "title": "行程标题（简洁有吸引力）"
-}`;
+返回格式：
+{"title":"标题内容"}`;
 
   const response = await client.chat([
-    { role: 'system', content: '你是专业的旅行规划师，只返回JSON格式。' },
+    { role: 'system', content: systemPrompt },
     { role: 'user', content: prompt },
-  ], { temperature: 0.8, maxTokens: 100 });
+  ], { temperature: 0.5, maxTokens: 50 });
   
   return parseAIResponse(response);
 }
@@ -160,52 +159,55 @@ async function generateSingleDay(
   currentDate.setDate(currentDate.getDate() + dayNumber - 1);
   const dateStr = format(currentDate, 'yyyy-MM-dd');
   
-  // 构建上下文摘要
-  const previousSummary = previousDays.length > 0
-    ? `\n\n前几天已安排：\n${previousDays.map(d => `第${d.day}天：${d.title}（${d.activities.length}个活动）`).join('\n')}`
+  // 超强系统提示词
+  const systemPrompt = `你是JSON格式生成器。严格遵守：
+
+【绝对规则】
+1. 只返回纯JSON，从{开始到}结束
+2. 不要markdown代码块(不要\`\`\`)
+3. 所有键必须双引号："day"不是day
+4. 所有字符串值必须双引号："北京"不是北京
+5. 数字不加引号：100不是"100"
+
+【示例-正确】
+{"day":1,"title":"探索北京","activities":[{"time":"09:00","title":"天安门","description":"游览天安门广场","location":"天安门","cost":0,"type":"attraction","tips":["早起避开人群"]}],"estimatedCost":200}
+
+【示例-错误】
+{day:1,title:探索北京}  ❌缺少引号
+{"day":"1"}  ❌数字加了引号
+
+从第一个字符{到最后一个字符}，中间不能有任何其他内容。`;
+
+  // 简化的提示词
+  const previousContext = previousDays.length > 0
+    ? `已安排：${previousDays.map(d => `第${d.day}天-${d.title}`).join('，')}\n`
     : '';
   
-  const prompt = `现在生成第 ${dayNumber} 天的详细行程（共${totalDays}天）。${previousSummary}
+  const prompt = `${previousContext}生成第${dayNumber}天行程
 
-要求：
-- 日期：${dateStr}
-- 安排 3-5 个活动
-- 时间合理分配
-- 控制在预算内
+目的地：${input.destination}
+日期：${dateStr}
+预算：${input.budget || 1000}元
+要求：3-4个活动
 
-只返回JSON格式：
-{
-  "day": ${dayNumber},
-  "date": "${dateStr}",
-  "title": "第${dayNumber}天主题",
-  "activities": [
-    {
-      "time": "09:00",
-      "title": "活动名称",
-      "description": "详细描述",
-      "location": "地点",
-      "cost": 100,
-      "type": "attraction",
-      "tips": ["建议1", "建议2"]
-    }
-  ],
-  "estimatedCost": 500
-}
+返回格式(严格遵守)：
+{"day":${dayNumber},"date":"${dateStr}","title":"主题","activities":[{"time":"09:00","title":"景点名","description":"简介","location":"地址","cost":50,"type":"attraction","tips":["提示1","提示2"]}],"estimatedCost":300}
 
-注意：
-1. 所有字段名和字符串值必须加双引号
-2. type只能是：attraction, meal, transportation, accommodation, shopping, entertainment, other
-3. 确保JSON格式完全正确`;
+type只能是: attraction,meal,transportation,accommodation,other
+直接返回JSON，不要其他内容`;
 
+  // 使用独立的消息，不依赖历史记录
   const messages = [
-    ...conversationHistory,
+    { role: 'system', content: systemPrompt },
     { role: 'user', content: prompt },
   ];
   
   const response = await client.chat(messages, {
-    temperature: 0.7,
-    maxTokens: 800,
+    temperature: 0.3,  // 降低温度，更保守
+    maxTokens: 600,    // 减少token，避免过长
   });
+  
+  console.log(`🔍 第 ${dayNumber} 天 AI 原始返回:`, response.substring(0, 200));
   
   const dayData = parseAIResponse(response);
   
@@ -226,30 +228,28 @@ async function generateSummary(
   input: TravelPlanInput,
   itinerary: ItineraryDay[]
 ): Promise<any> {
+  const systemPrompt = `你是JSON生成器。规则：
+1. 只返回纯JSON
+2. 所有键和字符串值必须双引号
+3. 不要markdown代码块`;
+
   const itinerarySummary = itinerary.map(day => 
-    `第${day.day}天：${day.title}（${day.activities.length}个活动，预计${day.estimatedCost}元）`
-  ).join('\n');
+    `第${day.day}天-${day.title}`
+  ).join('，');
   
-  const prompt = `基于以上${itinerary.length}天行程，生成一份总结：
+  const prompt = `总结${itinerary.length}天行程：${itinerarySummary}
 
-${itinerarySummary}
-
-只返回JSON格式：
-{
-  "highlights": ["亮点1", "亮点2", "亮点3"],
-  "tips": ["建议1", "建议2", "建议3"]
-}
-
-注意：所有字段和字符串必须加双引号`;
+返回格式：
+{"highlights":["亮点1","亮点2","亮点3"],"tips":["建议1","建议2","建议3"]}`;
 
   const messages = [
-    ...conversationHistory,
+    { role: 'system', content: systemPrompt },
     { role: 'user', content: prompt },
   ];
   
   const response = await client.chat(messages, {
-    temperature: 0.7,
-    maxTokens: 500,
+    temperature: 0.3,
+    maxTokens: 300,
   });
   
   return parseAIResponse(response);
