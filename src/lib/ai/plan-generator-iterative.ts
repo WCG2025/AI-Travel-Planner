@@ -36,10 +36,12 @@ export async function generateTravelPlanIterative(
     onProgress?.(day, days + 1, `正在生成第 ${day} 天行程...`);
     console.log(`📅 开始生成第 ${day}/${days} 天...`);
     
-    // 生成当天行程（最多重试3次）
+    // 生成当天行程（最多重试3次，带错误反馈）
     let dayItinerary: ItineraryDay | null = null;
     let retries = 0;
     const maxRetries = 3;
+    let lastError: string | null = null;
+    let lastResponse: string | null = null;
     
     while (!dayItinerary && retries < maxRetries) {
       try {
@@ -49,7 +51,9 @@ export async function generateTravelPlanIterative(
           input,
           day,
           days,
-          itinerary
+          itinerary,
+          lastError,
+          lastResponse
         );
         
         // 验证生成的行程
@@ -68,23 +72,63 @@ export async function generateTravelPlanIterative(
         
       } catch (error: any) {
         retries++;
+        lastError = error.message;
+        lastResponse = error.rawResponse || null;
+        
         console.warn(`⚠️ 第 ${day} 天生成失败（尝试 ${retries}/${maxRetries}）:`, error.message);
         
         if (retries >= maxRetries) {
           throw new Error(`第 ${day} 天行程生成失败，已重试 ${maxRetries} 次：${error.message}`);
         }
         
-        // 等待后重试
-        await new Promise(resolve => setTimeout(resolve, 1000 * retries));
+        console.log(`🔄 将错误反馈给 AI，让它自己修正...`);
+        
+        // 短暂等待
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
   }
   
-  // 步骤 3: 生成总结
+  // 步骤 3: 生成总结（带重试）
   onProgress?.(days + 1, days + 1, '正在生成行程总结...');
   console.log('📝 开始生成行程总结...');
   
-  const summary = await generateSummary(client, conversationHistory, input, itinerary);
+  let summary: any = null;
+  let summaryRetries = 0;
+  const maxSummaryRetries = 3;
+  let lastSummaryError: string | null = null;
+  let lastSummaryResponse: string | null = null;
+  
+  while (!summary && summaryRetries < maxSummaryRetries) {
+    try {
+      summary = await generateSummary(
+        client,
+        conversationHistory,
+        input,
+        itinerary,
+        lastSummaryError,
+        lastSummaryResponse
+      );
+    } catch (error: any) {
+      summaryRetries++;
+      lastSummaryError = error.message;
+      lastSummaryResponse = error.rawResponse || null;
+      
+      console.warn(`⚠️ 总结生成失败（尝试 ${summaryRetries}/${maxSummaryRetries}）:`, error.message);
+      
+      if (summaryRetries >= maxSummaryRetries) {
+        // 如果总结生成失败，使用默认总结
+        console.warn('❌ 总结生成失败，使用默认总结');
+        summary = {
+          highlights: ['精彩行程', '美好回忆', '难忘体验'],
+          tips: ['注意安全', '合理安排时间', '保持愉快心情'],
+        };
+      } else {
+        console.log(`🔄 将错误反馈给 AI，重新生成总结...`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+  }
   
   console.log('✅ 渐进式生成完成！');
   
@@ -145,7 +189,7 @@ function getOverviewPrompt(input: TravelPlanInput, days: number): string {
 }
 
 /**
- * 生成单天行程
+ * 生成单天行程（带错误反馈重试）
  */
 async function generateSingleDay(
   client: any,
@@ -153,7 +197,9 @@ async function generateSingleDay(
   input: TravelPlanInput,
   dayNumber: number,
   totalDays: number,
-  previousDays: ItineraryDay[]
+  previousDays: ItineraryDay[],
+  lastError?: string | null,
+  lastResponse?: string | null
 ): Promise<ItineraryDay> {
   const currentDate = new Date(input.startDate);
   currentDate.setDate(currentDate.getDate() + dayNumber - 1);
@@ -178,12 +224,12 @@ async function generateSingleDay(
 
 从第一个字符{到最后一个字符}，中间不能有任何其他内容。`;
 
-  // 简化的提示词
+  // 构建提示词
   const previousContext = previousDays.length > 0
     ? `已安排：${previousDays.map(d => `第${d.day}天-${d.title}`).join('，')}\n`
     : '';
   
-  const prompt = `${previousContext}生成第${dayNumber}天行程
+  let prompt = `${previousContext}生成第${dayNumber}天行程
 
 目的地：${input.destination}
 日期：${dateStr}
@@ -196,11 +242,47 @@ async function generateSingleDay(
 type只能是: attraction,meal,transportation,accommodation,other
 直接返回JSON，不要其他内容`;
 
-  // 使用独立的消息，不依赖历史记录
-  const messages = [
+  // 如果有上次的错误，添加错误反馈
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
     { role: 'system', content: systemPrompt },
-    { role: 'user', content: prompt },
   ];
+  
+  if (lastError && lastResponse) {
+    console.log(`📮 添加错误反馈：${lastError.substring(0, 100)}`);
+    
+    // 添加原始请求
+    messages.push({ role: 'user', content: prompt });
+    
+    // 添加 AI 的错误响应
+    messages.push({ role: 'assistant', content: lastResponse.substring(0, 1000) });
+    
+    // 添加错误反馈
+    const feedbackPrompt = `❌ 你的上次输出有错误：
+
+【错误信息】
+${lastError}
+
+【你的输出片段】
+开头：${lastResponse.substring(0, 150)}
+${lastResponse.length > 300 ? `...
+结尾：${lastResponse.substring(Math.max(0, lastResponse.length - 150))}` : ''}
+
+【问题分析】
+${getFeedbackAnalysis(lastError)}
+
+请严格按照系统提示的格式，重新生成正确的JSON。记住：
+1. 从 { 开始，到 } 结束
+2. 所有键和字符串值都要双引号
+3. 数字不加引号
+4. 不要任何其他文字或解释
+
+直接输出正确的JSON：`;
+    
+    messages.push({ role: 'user', content: feedbackPrompt });
+  } else {
+    // 首次生成
+    messages.push({ role: 'user', content: prompt });
+  }
   
   const response = await client.chat(messages, {
     temperature: 0.3,  // 降低温度，更保守
@@ -209,29 +291,60 @@ type只能是: attraction,meal,transportation,accommodation,other
   
   console.log(`🔍 第 ${dayNumber} 天 AI 原始返回:`, response.substring(0, 200));
   
-  const dayData = parseAIResponse(response);
-  
-  // 验证必需字段
-  if (!dayData.day || !dayData.date || !dayData.activities) {
-    throw new Error('缺少必需字段');
+  try {
+    const dayData = parseAIResponse(response);
+    
+    // 验证必需字段
+    if (!dayData.day || !dayData.date || !dayData.activities) {
+      throw new Error('缺少必需字段');
+    }
+    
+    return dayData as ItineraryDay;
+  } catch (error: any) {
+    // 将原始响应附加到错误中，用于下次重试时反馈给 AI
+    error.rawResponse = response;
+    throw error;
   }
-  
-  return dayData as ItineraryDay;
 }
 
 /**
- * 生成行程总结
+ * 根据错误类型生成反馈分析
+ */
+function getFeedbackAnalysis(errorMessage: string): string {
+  if (errorMessage.includes('找不到有效的 JSON 结构')) {
+    return '你没有返回JSON格式！必须从 { 开始，到 } 结束。';
+  }
+  if (errorMessage.includes('Unexpected token')) {
+    return '你的JSON中有语法错误！检查是否所有字符串都加了双引号，是否有多余的逗号。';
+  }
+  if (errorMessage.includes('Unexpected end')) {
+    return '你的JSON不完整！确保大括号和方括号都正确闭合。';
+  }
+  if (errorMessage.includes('缺少必需字段')) {
+    return '你的JSON缺少必需字段（day, date, activities）！';
+  }
+  if (errorMessage.includes('活动列表为空')) {
+    return '你的activities数组是空的！必须包含至少1个活动。';
+  }
+  return '格式不符合要求，请严格按照示例格式生成。';
+}
+
+/**
+ * 生成行程总结（带错误反馈）
  */
 async function generateSummary(
   client: any,
   conversationHistory: Array<{ role: string; content: string }>,
   input: TravelPlanInput,
-  itinerary: ItineraryDay[]
+  itinerary: ItineraryDay[],
+  lastError?: string | null,
+  lastResponse?: string | null
 ): Promise<any> {
   const systemPrompt = `你是JSON生成器。规则：
-1. 只返回纯JSON
+1. 只返回纯JSON，从{开始到}结束
 2. 所有键和字符串值必须双引号
-3. 不要markdown代码块`;
+3. 不要markdown代码块
+4. 不要任何其他文字`;
 
   const itinerarySummary = itinerary.map(day => 
     `第${day.day}天-${day.title}`
@@ -242,16 +355,44 @@ async function generateSummary(
 返回格式：
 {"highlights":["亮点1","亮点2","亮点3"],"tips":["建议1","建议2","建议3"]}`;
 
-  const messages = [
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
     { role: 'system', content: systemPrompt },
-    { role: 'user', content: prompt },
   ];
+  
+  if (lastError && lastResponse) {
+    console.log(`📮 添加总结错误反馈：${lastError.substring(0, 100)}`);
+    
+    messages.push({ role: 'user', content: prompt });
+    messages.push({ role: 'assistant', content: lastResponse.substring(0, 500) });
+    
+    const feedbackPrompt = `❌ 你的上次输出有错误：
+
+【错误信息】
+${lastError}
+
+【你的输出】
+${lastResponse.substring(0, 200)}
+
+【问题】
+${getFeedbackAnalysis(lastError)}
+
+重新生成正确的JSON（只返回JSON，不要其他内容）：`;
+    
+    messages.push({ role: 'user', content: feedbackPrompt });
+  } else {
+    messages.push({ role: 'user', content: prompt });
+  }
   
   const response = await client.chat(messages, {
     temperature: 0.3,
     maxTokens: 300,
   });
   
-  return parseAIResponse(response);
+  try {
+    return parseAIResponse(response);
+  } catch (error: any) {
+    error.rawResponse = response;
+    throw error;
+  }
 }
 
