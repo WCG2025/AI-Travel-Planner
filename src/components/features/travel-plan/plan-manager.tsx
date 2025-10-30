@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlanForm } from './plan-form';
 import { PlanCard } from './plan-card';
@@ -19,7 +20,7 @@ export function PlanManager() {
   const [selectedPlan, setSelectedPlan] = useState<TravelPlan | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   
-  const { generatePlan, status, plan: generatedPlan, error, progress } = useGeneratePlan();
+  const { generatePlan, status, plan: generatedPlan, error, progress, progressPercent } = useGeneratePlan();
   const { plans, loading, error: plansError, fetchPlans, deletePlan } = useTravelPlans();
   const { toast } = useToast();
   
@@ -142,7 +143,16 @@ export function PlanManager() {
           {status === 'generating' && (
             <Alert>
               <AlertDescription>
-                {progress || '正在生成中...'}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>{progress || '正在生成中...'}</span>
+                    <span className="font-medium">{Math.round(progressPercent)}%</span>
+                  </div>
+                  <Progress value={progressPercent} className="h-2" />
+                  <p className="text-xs text-muted-foreground">
+                    正在使用渐进式生成，逐天创建行程，请稍候...
+                  </p>
+                </div>
               </AlertDescription>
             </Alert>
           )}

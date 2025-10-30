@@ -8,6 +8,7 @@ export function useGeneratePlan() {
   const [plan, setPlan] = useState<TravelPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string>('');
+  const [progressPercent, setProgressPercent] = useState<number>(0);
   
   // 生成旅行计划
   const generatePlan = useCallback(async (input: TravelPlanInput) => {
@@ -17,6 +18,21 @@ export function useGeneratePlan() {
       setError(null);
       setPlan(null);
       setProgress('正在连接 AI 服务...');
+      setProgressPercent(0);
+      
+      // 计算总天数用于进度显示
+      const days = Math.ceil(
+        (new Date(input.endDate).getTime() - new Date(input.startDate).getTime()) / 
+        (1000 * 60 * 60 * 24)
+      ) + 1;
+      
+      // 模拟进度更新（每秒更新一次）
+      const progressInterval = setInterval(() => {
+        setProgressPercent(prev => {
+          if (prev >= 90) return prev;
+          return prev + (100 / (days * 2)); // 估算每天需要约2个进度单位
+        });
+      }, 1000);
       
       const response = await fetch('/api/generate-plan', {
         method: 'POST',
@@ -26,7 +42,9 @@ export function useGeneratePlan() {
         body: JSON.stringify({ input }),
       });
       
+      clearInterval(progressInterval);
       setProgress('正在接收 AI 响应...');
+      setProgressPercent(95);
       
       const data = await response.json();
       
@@ -42,6 +60,7 @@ export function useGeneratePlan() {
       setPlan(data.plan);
       setStatus('success');
       setProgress('生成完成！');
+      setProgressPercent(100);
       
       return data.plan;
     } catch (err: any) {
@@ -66,6 +85,7 @@ export function useGeneratePlan() {
     plan,
     error,
     progress,
+    progressPercent,
     generatePlan,
     reset,
   };

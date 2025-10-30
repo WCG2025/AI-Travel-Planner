@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { generateTravelPlan } from '@/lib/ai/plan-generator';
+import { generateTravelPlanIterative } from '@/lib/ai/plan-generator-iterative';
 import type { TravelPlanInput, GeneratePlanRequest, GeneratePlanResponse } from '@/types/travel-plan.types';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60; // 最大执行时间 60 秒
+export const maxDuration = 180; // 最大执行时间 180 秒（渐进式生成需要更多时间）
 
 /**
  * POST /api/generate-plan
@@ -44,9 +44,11 @@ export async function POST(request: NextRequest) {
     
     console.log('📝 输入参数:', input);
     
-    // 生成旅行计划
-    console.log('🤖 调用 AI 生成计划...');
-    const plan = await generateTravelPlan(input);
+    // 使用渐进式生成旅行计划
+    console.log('🤖 调用 AI 渐进式生成计划...');
+    const plan = await generateTravelPlanIterative(input, (current, total, message) => {
+      console.log(`📊 进度: ${current}/${total} - ${message}`);
+    });
     
     console.log('✅ 计划生成成功');
     
