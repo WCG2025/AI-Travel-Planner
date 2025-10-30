@@ -16,6 +16,8 @@ export class DeepSeekClient {
     this.client = new OpenAI({
       apiKey: AI_CONFIG.apiKey,
       baseURL: AI_CONFIG.baseURL,
+      timeout: AI_CONFIG.timeout,
+      maxRetries: AI_CONFIG.retry.maxRetries,
     });
     
     console.log('✅ DeepSeek 客户端初始化成功');

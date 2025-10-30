@@ -50,6 +50,12 @@ const formSchema = z.object({
 }).refine((data) => data.endDate >= data.startDate, {
   message: '结束日期必须晚于或等于开始日期',
   path: ['endDate'],
+}).refine((data) => {
+  const days = Math.ceil((data.endDate.getTime() - data.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  return days <= 10;
+}, {
+  message: '行程天数不能超过 10 天（生成时间较长，建议分多个行程规划）',
+  path: ['endDate'],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -65,9 +71,12 @@ export function PlanForm({ onSubmit, loading = false }: PlanFormProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      destination: '',
       travelers: 1,
       pace: 'moderate',
       interests: [],
+      budget: undefined,
+      specialRequirements: '',
     },
   });
   
@@ -235,6 +244,25 @@ export function PlanForm({ onSubmit, loading = false }: PlanFormProps) {
                     )}
                   />
                 </div>
+                
+                {/* 行程天数提示 */}
+                {form.watch('startDate') && form.watch('endDate') && (
+                  <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
+                    📅 行程天数：
+                    {Math.ceil(
+                      (form.watch('endDate').getTime() - form.watch('startDate').getTime()) / 
+                      (1000 * 60 * 60 * 24)
+                    ) + 1} 天
+                    {Math.ceil(
+                      (form.watch('endDate').getTime() - form.watch('startDate').getTime()) / 
+                      (1000 * 60 * 60 * 24)
+                    ) + 1 > 7 && (
+                      <span className="ml-2 text-orange-600">
+                        ⚠️ 行程较长，生成时间约 30-60 秒
+                      </span>
+                    )}
+                  </div>
+                )}
                 
                 {/* 预算和人数 */}
                 <div className="grid gap-4 md:grid-cols-2">

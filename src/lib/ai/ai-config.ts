@@ -24,7 +24,7 @@ export const AI_CONFIG = {
   },
   
   // 超时配置
-  timeout: 60000,           // 请求超时时间（毫秒）
+  timeout: 120000,          // 请求超时时间（毫秒）- 2 分钟
   
   // 提示词限制
   limits: {
