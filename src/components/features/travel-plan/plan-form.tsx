@@ -276,8 +276,11 @@ export function PlanForm({ onSubmit, loading = false }: PlanFormProps) {
                           <Input
                             type="number"
                             placeholder="例如：5000"
-                            {...field}
+                            value={field.value ?? ''}
                             onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                            onBlur={field.onBlur}
+                            name={field.name}
+                            ref={field.ref}
                           />
                         </FormControl>
                         <FormDescription>总预算，留空则灵活安排</FormDescription>
