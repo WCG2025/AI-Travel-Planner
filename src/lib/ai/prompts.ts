@@ -6,19 +6,16 @@ import { zhCN } from 'date-fns/locale';
  * 生成系统提示词
  */
 export function getSystemPrompt(): string {
-  return `你是一位专业的旅行规划师，拥有丰富的全球旅行经验和深厚的地理文化知识。
+  return `你是一位专业的旅行规划师。
 
-你的任务是根据用户的需求，生成详细、实用、个性化的旅行计划。
+重要要求：
+1. 必须严格返回有效的 JSON 格式
+2. 所有字段名和字符串值必须使用双引号
+3. 数字和布尔值不加引号
+4. 不要在 JSON 中使用中文标点符号（如：、，）
+5. 确保 JSON 格式正确可解析
 
-要求：
-1. 深入理解用户的偏好和需求
-2. 提供合理的时间安排和路线规划
-3. 推荐性价比高的景点、餐厅和住宿
-4. 给出准确的预算估算
-5. 提供实用的旅行建议和注意事项
-6. 考虑当地的天气、交通、文化等因素
-
-请以专业、友好的语气回复，使用简体中文。`;
+使用简体中文内容，但保持标准 JSON 格式。`;
 }
 
 /**
@@ -66,9 +63,9 @@ export function getTravelPlanPrompt(input: TravelPlanInput): string {
 - 人数：${input.travelers || 1}人${preferencesText}
 ${input.specialRequirements ? `\n特殊要求：${input.specialRequirements}` : ''}
 
-输出要求（严格JSON格式，无额外文字）：
+**输出格式（必须严格遵守）：**
 
-\`\`\`json
+只返回纯 JSON，格式如下：
 {
   "title": "行程标题",
   "destination": "${input.destination}",
@@ -83,29 +80,32 @@ ${input.specialRequirements ? `\n特殊要求：${input.specialRequirements}` : 
       "activities": [
         {
           "time": "09:00",
-          "title": "活动名",
-          "description": "活动描述",
-          "location": "地点",
+          "title": "活动名称",
+          "description": "详细描述",
+          "location": "地点名",
           "cost": 100,
           "type": "attraction",
-          "tips": ["建议"]
+          "tips": ["建议1", "建议2"]
         }
       ],
       "estimatedCost": 500
     }
   ],
   "summary": {
-    "highlights": ["亮点"],
-    "tips": ["建议"]
+    "highlights": ["亮点1", "亮点2"],
+    "tips": ["建议1", "建议2"]
   }
 }
-\`\`\`
 
-要求：
-1. 每天3-5个活动，时间合理
-2. type可选：attraction/meal/transportation/accommodation/shopping/entertainment/other
-3. 控制在预算内
-4. 只返回JSON，无其他内容`;
+**关键规则：**
+1. 所有字段名必须加双引号："title"
+2. 所有字符串值必须加双引号："北京"
+3. 数字不加引号：100
+4. 数组使用方括号：["a", "b"]
+5. 对象使用花括号：{"key": "value"}
+6. type 只能是：attraction, meal, transportation, accommodation, shopping, entertainment, other
+7. 每天3-5个活动
+8. 不要输出代码块标记（\`\`\`json），直接输出 JSON`;
   
   return prompt;
 }
@@ -131,15 +131,36 @@ export function parseAIResponse(content: string): any {
     
     jsonStr = jsonStr.trim();
     
+    // 尝试找到完整的 JSON 对象（从第一个 { 到最后一个 }）
+    const firstBrace = jsonStr.indexOf('{');
+    const lastBrace = jsonStr.lastIndexOf('}');
+    
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+    }
+    
+    // 尝试修复常见的格式问题
+    // 1. 替换中文标点为英文标点
+    jsonStr = jsonStr
+      .replace(/：/g, ':')  // 中文冒号
+      .replace(/，/g, ',')  // 中文逗号
+      .replace(/"/g, '"')  // 中文引号
+      .replace(/"/g, '"'); // 中文引号
+    
+    // 2. 修复缺少引号的字段名（常见模式）
+    // 例如：time:09:00 -> "time":"09:00"
+    jsonStr = jsonStr.replace(/([,\{]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+    
     // 解析 JSON
     const parsed = JSON.parse(jsonStr);
     
     console.log('✅ JSON 解析成功');
     return parsed;
-  } catch (error) {
-    console.error('❌ JSON 解析失败:', error);
-    console.error('原始内容:', content);
-    throw new Error('AI 返回的内容格式不正确，无法解析为 JSON');
+  } catch (error: any) {
+    console.error('❌ JSON 解析失败:', error.message);
+    console.error('尝试解析的内容（前500字符）:', content.substring(0, 500));
+    console.error('尝试解析的内容（后500字符）:', content.substring(Math.max(0, content.length - 500)));
+    throw new Error('AI 返回的内容格式不正确，无法解析为 JSON。请尝试更短的行程（2-3天）或重新生成。');
   }
 }
 

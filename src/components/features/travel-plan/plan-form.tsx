@@ -52,9 +52,9 @@ const formSchema = z.object({
   path: ['endDate'],
 }).refine((data) => {
   const days = Math.ceil((data.endDate.getTime() - data.startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  return days <= 10;
+  return days <= 7;
 }, {
-  message: '行程天数不能超过 10 天（生成时间较长，建议分多个行程规划）',
+  message: '行程天数不能超过 7 天（AI 生成长行程时容易出错，建议分多个行程规划）',
   path: ['endDate'],
 });
 
