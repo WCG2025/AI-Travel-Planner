@@ -3,7 +3,6 @@
  */
 
 import { getDeepSeekClient } from './deepseek-client';
-import { format, addDays } from 'date-fns';
 
 export interface ParsedTravelRequest {
   destination?: string;
@@ -47,19 +46,17 @@ export async function parseTravelRequest(text: string): Promise<ParsedTravelRequ
   "specialRequirements": "其他特殊需求"
 }
 
-如果某个字段没有提到，设置为null。`;
-
-  const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+如果某个字段没有提到，设置为null。
+⚠️ 重要：只有用户明确说了具体日期（如"11月1日"、"下周五"）时，才提取 startDate/endDate，否则不要自动计算日期！`;
   
   const userPrompt = `解析这段旅行需求：
 
 "${text}"
 
 提示：
-- 今天是 ${format(new Date(), 'yyyy-MM-dd')}
-- 如果没有明确说明开始日期，默认为明天（${tomorrow}）
 - 从描述中识别目的地、天数、预算、兴趣爱好等信息
 - interests 可能包含：history（历史文化）、nature（自然风光）、food（美食）、shopping（购物）、photography（摄影）、adventure（探险）、relaxation（休闲放松）、nightlife（夜生活）
+- 只有用户明确说了具体日期，才提取日期字段
 
 直接返回JSON：`;
 
@@ -96,16 +93,12 @@ export async function parseTravelRequest(text: string): Promise<ParsedTravelRequ
     const parsed = JSON.parse(jsonStr);
     console.log('✅ 解析成功:', parsed);
     
-    // 计算日期（可选）
-    let startDate: string | undefined;
-    let endDate: string | undefined;
+    // 日期处理（只有当 AI 明确识别出日期时才使用，否则保持 undefined）
+    let startDate: string | undefined = parsed.startDate;
+    let endDate: string | undefined = parsed.endDate;
     
-    if (parsed.days && parsed.days > 0) {
-      // 如果有天数，默认计算日期为明天开始
-      startDate = tomorrow;
-      const end = addDays(new Date(tomorrow), parsed.days - 1);
-      endDate = format(end, 'yyyy-MM-dd');
-    }
+    // 不再自动计算日期！让 startDate 和 endDate 保持 undefined
+    // 这样就会使用相对日期模式（第1天、第2天）
     
     // 检查缺失的必需字段（只有目的地和天数是必需的）
     const missingFields: string[] = [];
@@ -123,6 +116,12 @@ export async function parseTravelRequest(text: string): Promise<ParsedTravelRequ
     } else if (parsed.destination || parsed.days) {
       confidence = 'medium';
     }
+    
+    console.log(`📅 日期模式: ${startDate ? '绝对日期' : '相对日期'}`);
+    console.log(`📅 开始日期: ${startDate || '未指定'}`);
+    console.log(`📅 结束日期: ${endDate || '未指定'}`);
+    console.log(`📅 天数: ${parsed.days || '未知'}`);
+
     
     const result: ParsedTravelRequest = {
       destination: parsed.destination || undefined,
