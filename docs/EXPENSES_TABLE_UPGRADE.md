@@ -136,40 +136,46 @@ END $$;
 -- ------------------------------------------------------------
 -- 第 2 项：创建自动更新时间触发器
 -- ------------------------------------------------------------
--- 创建触发器函数
-CREATE OR REPLACE FUNCTION update_expenses_updated_at()
-RETURNS TRIGGER AS $$
+DO $$ 
 BEGIN
-  NEW.updated_at = TIMEZONE('utc'::text, NOW());
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+  -- 创建触发器函数
+  CREATE OR REPLACE FUNCTION update_expenses_updated_at()
+  RETURNS TRIGGER AS $func$
+  BEGIN
+    NEW.updated_at = TIMEZONE('utc'::text, NOW());
+    RETURN NEW;
+  END;
+  $func$ LANGUAGE plpgsql;
 
--- 删除旧触发器（如果存在）
-DROP TRIGGER IF EXISTS trigger_update_expenses_updated_at ON expenses;
+  -- 删除旧触发器（如果存在）
+  DROP TRIGGER IF EXISTS trigger_update_expenses_updated_at ON expenses;
 
--- 创建新触发器
-CREATE TRIGGER trigger_update_expenses_updated_at
-  BEFORE UPDATE ON expenses
-  FOR EACH ROW
-  EXECUTE FUNCTION update_expenses_updated_at();
+  -- 创建新触发器
+  CREATE TRIGGER trigger_update_expenses_updated_at
+    BEFORE UPDATE ON expenses
+    FOR EACH ROW
+    EXECUTE FUNCTION update_expenses_updated_at();
 
-RAISE NOTICE '✅ 已创建自动更新时间触发器';
+  RAISE NOTICE '✅ 已创建自动更新时间触发器';
+END $$;
 
 -- ------------------------------------------------------------
 -- 第 3 项：创建性能优化索引
 -- ------------------------------------------------------------
--- 索引 1：按计划 ID 查询（最常用）
-CREATE INDEX IF NOT EXISTS idx_expenses_plan_id ON expenses(plan_id);
-RAISE NOTICE '✅ 已创建 idx_expenses_plan_id 索引';
+DO $$ 
+BEGIN
+  -- 索引 1：按计划 ID 查询（最常用）
+  CREATE INDEX IF NOT EXISTS idx_expenses_plan_id ON expenses(plan_id);
+  RAISE NOTICE '✅ 已创建 idx_expenses_plan_id 索引';
 
--- 索引 2：按日期查询/排序
-CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date);
-RAISE NOTICE '✅ 已创建 idx_expenses_date 索引';
+  -- 索引 2：按日期查询/排序
+  CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date);
+  RAISE NOTICE '✅ 已创建 idx_expenses_date 索引';
 
--- 索引 3：按类别统计
-CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category);
-RAISE NOTICE '✅ 已创建 idx_expenses_category 索引';
+  -- 索引 3：按类别统计
+  CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category);
+  RAISE NOTICE '✅ 已创建 idx_expenses_category 索引';
+END $$;
 
 -- ------------------------------------------------------------
 -- 第 4 项：添加数据完整性约束
