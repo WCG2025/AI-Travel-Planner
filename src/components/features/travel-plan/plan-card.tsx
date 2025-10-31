@@ -45,13 +45,20 @@ export function PlanCard({ plan, onView, onDelete }: PlanCardProps) {
       </CardHeader>
       
       <CardContent className="space-y-2">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Calendar className="h-4 w-4" />
-          <span>
-            {format(new Date(plan.startDate), 'MM月dd日', { locale: zhCN })} -{' '}
-            {format(new Date(plan.endDate), 'MM月dd日', { locale: zhCN })}
-          </span>
-        </div>
+        {plan.startDate && plan.endDate ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            <span>
+              {format(new Date(plan.startDate), 'MM月dd日', { locale: zhCN })} -{' '}
+              {format(new Date(plan.endDate), 'MM月dd日', { locale: zhCN })}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Calendar className="h-4 w-4" />
+            <span>相对日期 • {plan.days}天行程</span>
+          </div>
+        )}
         
         {plan.budget && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">

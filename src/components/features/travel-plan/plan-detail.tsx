@@ -36,11 +36,18 @@ export function PlanDetail({ plan }: PlanDetailProps) {
               <MapPin className="h-4 w-4" />
               {plan.destination}
             </span>
-            <span className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              {format(new Date(plan.startDate), 'yyyy年MM月dd日', { locale: zhCN })} -{' '}
-              {format(new Date(plan.endDate), 'yyyy年MM月dd日', { locale: zhCN })}
-            </span>
+            {plan.startDate && plan.endDate ? (
+              <span className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                {format(new Date(plan.startDate), 'yyyy年MM月dd日', { locale: zhCN })} -{' '}
+                {format(new Date(plan.endDate), 'yyyy年MM月dd日', { locale: zhCN })}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                相对日期行程
+              </span>
+            )}
             <Badge variant="secondary">{plan.days}天</Badge>
           </CardDescription>
         </CardHeader>
@@ -68,9 +75,15 @@ export function PlanDetail({ plan }: PlanDetailProps) {
                   <div className="flex items-center gap-3 text-left">
                     <Badge>第{day.day}天</Badge>
                     <span className="font-medium">{day.title}</span>
-                    <span className="text-sm text-muted-foreground">
-                      {format(new Date(day.date), 'MM月dd日', { locale: zhCN })}
-                    </span>
+                    {day.date && !day.date.startsWith('第') ? (
+                      <span className="text-sm text-muted-foreground">
+                        {format(new Date(day.date), 'MM月dd日', { locale: zhCN })}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">
+                        {day.date || `第${day.day}天`}
+                      </span>
+                    )}
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>

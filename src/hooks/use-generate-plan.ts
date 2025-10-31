@@ -20,11 +20,21 @@ export function useGeneratePlan() {
       setProgress('正在连接 AI 服务...');
       setProgressPercent(0);
       
-      // 计算总天数用于进度显示
-      const days = Math.ceil(
-        (new Date(input.endDate).getTime() - new Date(input.startDate).getTime()) / 
-        (1000 * 60 * 60 * 24)
-      ) + 1;
+      // 计算总天数用于进度显示（支持相对日期模式）
+      let days: number;
+      if (input.startDate && input.endDate) {
+        // 绝对日期模式：从日期计算天数
+        days = Math.ceil(
+          (new Date(input.endDate).getTime() - new Date(input.startDate).getTime()) / 
+          (1000 * 60 * 60 * 24)
+        ) + 1;
+      } else if (input.days) {
+        // 相对日期模式：直接使用天数
+        days = input.days;
+      } else {
+        // 默认值
+        days = 3;
+      }
       
       // 模拟进度更新（每秒更新一次）
       const progressInterval = setInterval(() => {
