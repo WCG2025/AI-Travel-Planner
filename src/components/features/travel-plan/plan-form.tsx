@@ -132,11 +132,12 @@ export function PlanForm({ onSubmit, loading = false }: PlanFormProps) {
         return;
       }
       
-      // 构建输入
+      // 构建输入（日期可选）
       const input: TravelPlanInput = {
         destination: parsed.destination!,
-        startDate: parsed.startDate!,
-        endDate: parsed.endDate!,
+        startDate: parsed.startDate,
+        endDate: parsed.endDate,
+        days: parsed.days,
         budget: parsed.budget,
         travelers: parsed.travelers,
         preferences: {

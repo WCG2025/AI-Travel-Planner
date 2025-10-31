@@ -15,7 +15,16 @@ export async function generateTravelPlanIterative(
 ): Promise<TravelPlan> {
   console.log('🔄 使用渐进式生成模式...');
   
-  const days = differenceInDays(new Date(input.endDate), new Date(input.startDate)) + 1;
+  // 计算天数（支持相对日期模式）
+  let days: number;
+  if (input.startDate && input.endDate) {
+    days = differenceInDays(new Date(input.endDate), new Date(input.startDate)) + 1;
+  } else if (input.days) {
+    days = input.days;
+  } else {
+    throw new Error('请提供开始/结束日期或天数');
+  }
+  
   const client = getDeepSeekClient();
   
   // 步骤 1: 生成计划概要和基本信息
@@ -132,12 +141,12 @@ export async function generateTravelPlanIterative(
   
   console.log('✅ 渐进式生成完成！');
   
-  // 组装完整计划
+  // 组装完整计划（日期可选）
   const plan: TravelPlan = {
     title: planOverview.title,
     destination: input.destination,
-    startDate: input.startDate,
-    endDate: input.endDate,
+    startDate: input.startDate,  // 可能为 undefined
+    endDate: input.endDate,      // 可能为 undefined
     days,
     budget: input.budget,
     preferences: input.preferences,
@@ -201,9 +210,15 @@ async function generateSingleDay(
   lastError?: string | null,
   lastResponse?: string | null
 ): Promise<ItineraryDay> {
-  const currentDate = new Date(input.startDate);
-  currentDate.setDate(currentDate.getDate() + dayNumber - 1);
-  const dateStr = format(currentDate, 'yyyy-MM-dd');
+  // 计算日期（如果有具体日期）或使用相对日期
+  let dateStr: string;
+  if (input.startDate) {
+    const currentDate = new Date(input.startDate);
+    currentDate.setDate(currentDate.getDate() + dayNumber - 1);
+    dateStr = format(currentDate, 'yyyy-MM-dd');
+  } else {
+    dateStr = `第${dayNumber}天`;
+  }
   
   // 超强系统提示词
   const systemPrompt = `你是JSON格式生成器。严格遵守：
@@ -232,13 +247,14 @@ async function generateSingleDay(
   let prompt = `${previousContext}生成第${dayNumber}天行程
 
 目的地：${input.destination}
-日期：${dateStr}
+${input.startDate ? `日期：${dateStr}` : `相对日期：${dateStr}`}
 预算：${input.budget || 1000}元
 要求：3-4个活动
 
 返回格式(严格遵守)：
-{"day":${dayNumber},"date":"${dateStr}","title":"主题","activities":[{"time":"09:00","title":"景点名","description":"简介","location":"地址","cost":50,"type":"attraction","tips":["提示1","提示2"]}],"estimatedCost":300}
+{"day":${dayNumber}${input.startDate ? `,"date":"${dateStr}"` : ''},"title":"主题","activities":[{"time":"09:00","title":"景点名","description":"简介","location":"地址","cost":50,"type":"attraction","tips":["提示1","提示2"]}],"estimatedCost":300}
 
+${input.startDate ? 'date字段必须是 yyyy-MM-dd 格式的具体日期' : 'date字段可以省略，因为使用相对日期模式'}
 type只能是: attraction,meal,transportation,accommodation,other
 直接返回JSON，不要其他内容`;
 
@@ -294,9 +310,14 @@ ${getFeedbackAnalysis(lastError)}
   try {
     const dayData = parseAIResponse(response);
     
-    // 验证必需字段
-    if (!dayData.day || !dayData.date || !dayData.activities) {
-      throw new Error('缺少必需字段');
+    // 验证必需字段（date 在相对日期模式下可选）
+    if (!dayData.day || !dayData.activities) {
+      throw new Error('缺少必需字段 (day 或 activities)');
+    }
+    
+    // 如果没有 date 字段，添加相对日期
+    if (!dayData.date && !input.startDate) {
+      dayData.date = `第${dayNumber}天`;
     }
     
     return dayData as ItineraryDay;

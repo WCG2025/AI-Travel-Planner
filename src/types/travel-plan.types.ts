@@ -3,8 +3,9 @@
 // 用户输入的旅行需求
 export interface TravelPlanInput {
   destination: string;          // 目的地
-  startDate: string;             // 开始日期 (YYYY-MM-DD)
-  endDate: string;               // 结束日期 (YYYY-MM-DD)
+  startDate?: string;            // 开始日期 (YYYY-MM-DD)，可选
+  endDate?: string;              // 结束日期 (YYYY-MM-DD)，可选
+  days?: number;                 // 天数（如果没有具体日期）
   budget?: number;               // 预算（元）
   travelers?: number;            // 同行人数
   preferences?: TravelPreferences; // 旅行偏好
@@ -26,8 +27,8 @@ export interface TravelPlan {
   userId?: string;
   title: string;                 // 计划标题
   destination: string;           // 目的地
-  startDate: string;             // 开始日期
-  endDate: string;               // 结束日期
+  startDate?: string;            // 开始日期（可选，相对日期模式下不需要）
+  endDate?: string;              // 结束日期（可选，相对日期模式下不需要）
   days: number;                  // 天数
   budget?: number;               // 预算
   preferences?: TravelPreferences;
@@ -40,7 +41,7 @@ export interface TravelPlan {
 // 每天的行程
 export interface ItineraryDay {
   day: number;                   // 第几天
-  date: string;                  // 日期
+  date?: string;                 // 日期（可选，可以是具体日期或"第X天"）
   title: string;                 // 当天主题
   activities: Activity[];        // 活动列表
   estimatedCost?: number;        // 当天预估费用

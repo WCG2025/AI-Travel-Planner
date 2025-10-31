@@ -281,11 +281,11 @@ export function parseAIResponse(content: string): any {
 export function validateTravelPlan(plan: any): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
   
-  // 必需字段检查
+  // 必需字段检查（日期变为可选）
   if (!plan.title) errors.push('缺少标题');
   if (!plan.destination) errors.push('缺少目的地');
-  if (!plan.startDate) errors.push('缺少开始日期');
-  if (!plan.endDate) errors.push('缺少结束日期');
+  if (!plan.days) errors.push('缺少天数');
+  // startDate 和 endDate 现在是可选的（相对日期模式）
   if (!plan.itinerary || !Array.isArray(plan.itinerary)) {
     errors.push('缺少行程数组');
   }

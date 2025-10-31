@@ -173,6 +173,9 @@ export function PlanManager() {
       {/* 计划详情对话框 */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedPlan?.title || '行程详情'}</DialogTitle>
+          </DialogHeader>
           {selectedPlan && <PlanDetail plan={selectedPlan} />}
         </DialogContent>
       </Dialog>

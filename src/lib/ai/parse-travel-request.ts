@@ -96,32 +96,31 @@ export async function parseTravelRequest(text: string): Promise<ParsedTravelRequ
     const parsed = JSON.parse(jsonStr);
     console.log('✅ 解析成功:', parsed);
     
-    // 计算日期
+    // 计算日期（可选）
     let startDate: string | undefined;
     let endDate: string | undefined;
     
     if (parsed.days && parsed.days > 0) {
-      // 如果有天数，计算日期
+      // 如果有天数，默认计算日期为明天开始
       startDate = tomorrow;
       const end = addDays(new Date(tomorrow), parsed.days - 1);
       endDate = format(end, 'yyyy-MM-dd');
     }
     
-    // 检查缺失的必需字段
+    // 检查缺失的必需字段（只有目的地和天数是必需的）
     const missingFields: string[] = [];
-    if (!parsed.destination && !startDate) {
-      missingFields.push('destination', 'dates');
-    } else if (!parsed.destination) {
-      missingFields.push('destination');
-    } else if (!startDate) {
-      missingFields.push('dates');
+    if (!parsed.destination) {
+      missingFields.push('目的地');
+    }
+    if (!parsed.days || parsed.days <= 0) {
+      missingFields.push('天数');
     }
     
-    // 评估置信度
+    // 评估置信度（基于目的地和天数）
     let confidence: 'high' | 'medium' | 'low' = 'low';
-    if (parsed.destination && startDate && endDate) {
+    if (parsed.destination && parsed.days) {
       confidence = 'high';
-    } else if (parsed.destination || (startDate && endDate)) {
+    } else if (parsed.destination || parsed.days) {
       confidence = 'medium';
     }
     
@@ -150,7 +149,7 @@ export async function parseTravelRequest(text: string): Promise<ParsedTravelRequ
     return {
       specialRequirements: text,
       confidence: 'low',
-      missingFields: ['destination', 'dates'],
+      missingFields: ['目的地', '天数'],
       travelers: 1,
       pace: 'moderate',
     };
