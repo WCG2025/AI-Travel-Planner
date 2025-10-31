@@ -2,7 +2,7 @@
  * AI 解析自然语言旅行需求
  */
 
-import { DeepSeekClient } from './deepseek-client';
+import { getDeepSeekClient } from './deepseek-client';
 import { format, addDays } from 'date-fns';
 
 export interface ParsedTravelRequest {
@@ -26,7 +26,7 @@ export async function parseTravelRequest(text: string): Promise<ParsedTravelRequ
   console.log('🔍 开始解析自然语言旅行需求...');
   console.log('📝 输入文本:', text);
   
-  const client = DeepSeekClient.getInstance();
+  const client = getDeepSeekClient();
   
   const systemPrompt = `你是旅行需求解析器。从用户的自然语言描述中提取旅行信息。
 
