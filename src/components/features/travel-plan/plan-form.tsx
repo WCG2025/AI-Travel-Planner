@@ -36,8 +36,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
-import { parseTravelRequest } from '@/lib/ai/parse-travel-request';
 import type { TravelPlanInput } from '@/types/travel-plan.types';
+import type { ParsedTravelRequest } from '@/lib/ai/parse-travel-request';
 
 // 表单验证 Schema
 const formSchema = z.object({
@@ -103,12 +103,27 @@ export function PlanForm({ onSubmit, loading = false }: PlanFormProps) {
     
     try {
       console.log('🎤 开始解析语音需求...');
-      const parsed = await parseTravelRequest(voiceText);
       
+      // 调用 API 解析语音
+      const response = await fetch('/api/parse-voice', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: voiceText }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || '解析失败');
+      }
+      
+      const parsed: ParsedTravelRequest = result.data;
       console.log('📊 解析结果:', parsed);
       
       // 检查是否有必需字段
-      if (parsed.missingFields.length > 0) {
+      if (parsed.missingFields && parsed.missingFields.length > 0) {
         setParseError(
           `从您的描述中无法识别出${parsed.missingFields.join('、')}。` +
           `请补充描述，或切换到表单输入模式。`
