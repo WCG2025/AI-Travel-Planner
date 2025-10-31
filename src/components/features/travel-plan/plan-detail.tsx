@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ExpenseList } from '@/components/features/expenses/expense-list';
 import type { TravelPlan, Activity } from '@/types/travel-plan.types';
 
 interface PlanDetailProps {
@@ -26,7 +28,7 @@ export function PlanDetail({ plan }: PlanDetailProps) {
   };
   
   return (
-    <div className="space-y-6">
+    <Tabs defaultValue="itinerary" className="space-y-6">
       {/* 标题和基本信息 */}
       <Card>
         <CardHeader>
@@ -62,7 +64,14 @@ export function PlanDetail({ plan }: PlanDetailProps) {
         )}
       </Card>
       
-      {/* 行程安排 */}
+      {/* 标签页导航 */}
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="itinerary">行程安排</TabsTrigger>
+        <TabsTrigger value="expenses">费用管理</TabsTrigger>
+      </TabsList>
+      
+      {/* 行程安排标签页 */}
+      <TabsContent value="itinerary" className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>详细行程</CardTitle>
@@ -204,7 +213,16 @@ export function PlanDetail({ plan }: PlanDetailProps) {
           )}
         </div>
       )}
-    </div>
+      </TabsContent>
+      
+      {/* 费用管理标签页 */}
+      <TabsContent value="expenses">
+        <ExpenseList 
+          planId={plan.id} 
+          budget={plan.budget ? { total: plan.budget } : undefined}
+        />
+      </TabsContent>
+    </Tabs>
   );
 }
 
