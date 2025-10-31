@@ -35,8 +35,8 @@ export interface Database {
           user_id: string;
           title: string;
           destination: string;
-          start_date: string;
-          end_date: string;
+          start_date: string | null;  // 可选：支持相对日期模式
+          end_date: string | null;    // 可选：支持相对日期模式
           budget: number | null;
           preferences: Json;
           itinerary: Json;
@@ -48,8 +48,8 @@ export interface Database {
           user_id: string;
           title: string;
           destination: string;
-          start_date: string;
-          end_date: string;
+          start_date?: string | null;  // 可选
+          end_date?: string | null;    // 可选
           budget?: number | null;
           preferences?: Json;
           itinerary?: Json;
@@ -61,8 +61,8 @@ export interface Database {
           user_id?: string;
           title?: string;
           destination?: string;
-          start_date?: string;
-          end_date?: string;
+          start_date?: string | null;
+          end_date?: string | null;
           budget?: number | null;
           preferences?: Json;
           itinerary?: Json;

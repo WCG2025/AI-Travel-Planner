@@ -34,10 +34,26 @@ export async function POST(request: NextRequest) {
     const body: GeneratePlanRequest = await request.json();
     const { input } = body;
     
-    // 验证输入
-    if (!input.destination || !input.startDate || !input.endDate) {
+    // 验证输入（日期现在是可选的，但需要 days 或 startDate+endDate）
+    if (!input.destination) {
       return NextResponse.json(
-        { success: false, error: '缺少必需参数：目的地、开始日期、结束日期' },
+        { success: false, error: '缺少必需参数：目的地' },
+        { status: 400 }
+      );
+    }
+    
+    // 检查日期：必须有具体日期或天数
+    if (!input.startDate && !input.endDate && !input.days) {
+      return NextResponse.json(
+        { success: false, error: '请提供开始/结束日期或旅行天数' },
+        { status: 400 }
+      );
+    }
+    
+    // 如果有具体日期，验证完整性
+    if ((input.startDate && !input.endDate) || (!input.startDate && input.endDate)) {
+      return NextResponse.json(
+        { success: false, error: '开始日期和结束日期必须同时提供' },
         { status: 400 }
       );
     }
@@ -60,8 +76,8 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         title: plan.title,
         destination: plan.destination,
-        start_date: plan.startDate,
-        end_date: plan.endDate,
+        start_date: plan.startDate || null,  // 可选
+        end_date: plan.endDate || null,      // 可选
         budget: plan.budget || null,
         preferences: plan.preferences || {},
         itinerary: plan.itinerary || [],
