@@ -162,16 +162,18 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
         }
 
         const activity = activities[index];
-        validCoordinates.push(coordinate);
 
         try {
-          console.log(`   → 创建标记: "${activity.title}" at [${coordinate.lng}, ${coordinate.lat}]`);
+          console.log(`   → 准备创建标记: "${activity.title}" at [${coordinate.lng}, ${coordinate.lat}]`);
           
-          // 再次验证坐标（双重保险）
+          // 创建标记前最后验证（在 push 之前）
           if (!coordinate.lng || !coordinate.lat || isNaN(coordinate.lng) || isNaN(coordinate.lat)) {
-            console.error(`   ❌ 坐标验证失败，跳过: ${JSON.stringify(coordinate)}`);
+            console.error(`   ❌ 坐标二次验证失败，跳过: ${JSON.stringify(coordinate)}`);
             return;
           }
+          
+          // 只有完全验证通过，才加入 validCoordinates
+          validCoordinates.push(coordinate);
           
           // 创建标记，简化配置避免 NaN
           const marker = new amap.Marker({
