@@ -40,8 +40,8 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [markers, setMarkers] = useState<any[]>([]);
+  const [polylines, setPolylines] = useState<any[]>([]);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
-  const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
 
   // 调试信息
   console.log('🗺️ ItineraryMap 渲染:', {
@@ -136,9 +136,11 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
         return;
       }
 
-      // 清除旧标记
+      // 清除旧标记和连线
       markers.forEach(marker => marker.setMap(null));
       setMarkers([]);
+      polylines.forEach(line => line.setMap(null));
+      setPolylines([]);
 
       // 创建新标记
       const newMarkers: any[] = [];
@@ -162,10 +164,15 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
         validCoordinates.push(coordinate);
 
         try {
-          // 创建标记
+          // 创建标记，显示景点名称
           const marker = new amap.Marker({
             position: [coordinate.lng, coordinate.lat],
             title: activity.title,
+            label: {
+              content: `<div style="background: white; padding: 4px 8px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); font-size: 12px; white-space: nowrap;">${activity.title}</div>`,
+              direction: 'top',
+              offset: new amap.Pixel(0, -5),
+            },
             icon: new amap.Icon({
               size: new amap.Size(32, 32),
               image: getMarkerIconUrl(activity.type),
@@ -174,16 +181,22 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
             offset: new amap.Pixel(-16, -32),
           });
 
-          // 点击标记
+          // 创建详细信息窗口（点击显示）
+          const infoWindow = new amap.InfoWindow({
+            content: createInfoWindowContent(activity),
+            offset: new amap.Pixel(0, -32),
+            closeWhenClickMap: true,
+          });
+
+          // 点击标记显示详细信息
           marker.on('click', () => {
             setSelectedActivity(activity);
-            
-            // 创建信息窗口
-            const infoWindow = new amap.InfoWindow({
-              content: createInfoWindowContent(activity),
-              offset: new amap.Pixel(0, -32),
-            });
             infoWindow.open(map, marker.getPosition());
+          });
+
+          // 鼠标悬停显示提示（可选）
+          marker.on('mouseover', () => {
+            marker.setTop(true); // 置顶显示
           });
 
           marker.setMap(map);
@@ -243,43 +256,59 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
         }
       }
 
-      // 尝试绘制路线（前两个点）
-      if (validCoordinates.length >= 2) {
-        try {
-          const route = await planRoute({
-            origin: validCoordinates[0],
-            destination: validCoordinates[1],
-            mode: 'walking',
-          });
-
-          setRouteInfo({
-            distance: route.distance,
-            duration: route.duration,
-          });
-
-          // 绘制路线
+      // 绘制每天内景点之间的连线
+      console.log('🔗 开始绘制每天内的景点连线...');
+      const polylines: any[] = [];
+      let globalIndex = 0; // 全局景点索引
+      
+      plan.itinerary.forEach((day: ItineraryDay, dayIndex: number) => {
+        const dayActivities = day.activities.filter(a => a.location);
+        const dayCoordinates: Coordinate[] = [];
+        
+        // 收集这一天的有效坐标
+        for (let i = 0; i < dayActivities.length; i++) {
+          const coord = coordinates[globalIndex + i];
+          if (coord && 
+              typeof coord.lng === 'number' && 
+              typeof coord.lat === 'number' &&
+              !isNaN(coord.lng) && 
+              !isNaN(coord.lat)) {
+            dayCoordinates.push(coord);
+          }
+        }
+        
+        globalIndex += dayActivities.length;
+        
+        // 如果这一天有至少2个有效坐标，绘制连线
+        if (dayCoordinates.length >= 2) {
+          const path = dayCoordinates.map(coord => [coord.lng, coord.lat]);
+          
+          // 为每天使用不同颜色
+          const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
+          const color = colors[dayIndex % colors.length];
+          
           const polyline = new amap.Polyline({
-            path: route.path.map(p => [p.lng, p.lat]),
-            strokeColor: '#4285F4',
-            strokeWeight: 5,
-            strokeOpacity: 0.8,
+            path: path,
+            strokeColor: color,
+            strokeWeight: 3,
+            strokeOpacity: 0.7,
+            strokeStyle: 'solid',
             lineJoin: 'round',
             lineCap: 'round',
           });
-
+          
           polyline.setMap(map);
-          console.log(`✅ 路线绘制成功`);
-        } catch (error: any) {
-          console.warn('⚠️ 路线规划失败（不影响地图显示）:', error?.message || error);
-          // 路线规划失败不影响地图基本功能
-          setRouteInfo(null);
+          polylines.push(polyline);
+          
+          console.log(`✅ 第${dayIndex + 1}天: 连接 ${dayCoordinates.length} 个景点`);
         }
-      } else {
-        console.log(`ℹ️ 有效坐标 ${validCoordinates.length} 个，跳过路线规划`);
-      }
+      });
+      
+      console.log(`✅ 总共绘制 ${polylines.length} 条连线`);
+      setPolylines(polylines);
 
       const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-      console.log(`✅ 成功加载 ${newMarkers.length} 个地点 (总耗时 ${totalTime}秒)`);
+      console.log(`✅ 成功加载 ${newMarkers.length} 个地点，${polylines.length} 条连线 (总耗时 ${totalTime}秒)`);
       setLoading(false);
 
     } catch (error: any) {
