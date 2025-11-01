@@ -165,14 +165,22 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
         validCoordinates.push(coordinate);
 
         try {
-          // 创建标记，显示景点名称
+          console.log(`   → 创建标记: "${activity.title}" at [${coordinate.lng}, ${coordinate.lat}]`);
+          
+          // 再次验证坐标（双重保险）
+          if (!coordinate.lng || !coordinate.lat || isNaN(coordinate.lng) || isNaN(coordinate.lat)) {
+            console.error(`   ❌ 坐标验证失败，跳过: ${JSON.stringify(coordinate)}`);
+            return;
+          }
+          
+          // 创建标记，简化配置避免 NaN
           const marker = new amap.Marker({
-            position: [coordinate.lng, coordinate.lat],
+            position: new amap.LngLat(coordinate.lng, coordinate.lat),
             title: activity.title,
             label: {
-              content: `<div style="background: white; padding: 4px 8px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); font-size: 12px; white-space: nowrap;">${activity.title}</div>`,
+              content: activity.title,
+              offset: new amap.Pixel(0, -40),
               direction: 'top',
-              offset: new amap.Pixel(0, -5),
             },
             icon: new amap.Icon({
               size: new amap.Size(32, 32),
@@ -180,6 +188,7 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
               imageSize: new amap.Size(32, 32),
             }),
             offset: new amap.Pixel(-16, -32),
+            zIndex: 100,
           });
 
           // 创建详细信息窗口（点击显示）
