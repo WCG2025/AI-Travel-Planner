@@ -259,7 +259,7 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
 
       // 绘制每天内景点之间的连线
       console.log('🔗 开始绘制每天内的景点连线...');
-      const polylines: any[] = [];
+      const newPolylines: any[] = [];  // 重命名以避免与 state 冲突
       let globalIndex = 0; // 全局景点索引
       
       plan.itinerary.forEach((day: ItineraryDay, dayIndex: number) => {
@@ -299,17 +299,17 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
           });
           
           polyline.setMap(map);
-          polylines.push(polyline);
+          newPolylines.push(polyline);
           
-          console.log(`✅ 第${dayIndex + 1}天: 连接 ${dayCoordinates.length} 个景点`);
+          console.log(`✅ 第${dayIndex + 1}天: 连接 ${dayCoordinates.length} 个景点，颜色: ${color}`);
         }
       });
       
-      console.log(`✅ 总共绘制 ${polylines.length} 条连线`);
-      setPolylines(polylines);
+      console.log(`✅ 总共绘制 ${newPolylines.length} 条连线`);
+      setPolylines(newPolylines);
 
       const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-      console.log(`✅ 成功加载 ${newMarkers.length} 个地点，${polylines.length} 条连线 (总耗时 ${totalTime}秒)`);
+      console.log(`✅ 成功加载 ${newMarkers.length} 个地点，${newPolylines.length} 条连线 (总耗时 ${totalTime}秒)`);
       setLoading(false);
 
     } catch (error: any) {
