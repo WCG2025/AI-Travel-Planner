@@ -13,53 +13,71 @@ export async function geocode(address: string, city?: string): Promise<Geocoding
   return new Promise((resolve, reject) => {
     try {
       const AMap = getAMap();
-      const geocoder = new AMap.Geocoder({
-        city: city || '全国',
-      });
-
-      // 添加5秒超时
-      const timeout = setTimeout(() => {
-        const error = new Error(`地理编码超时: ${address}`);
-        console.error('⏱️', error.message);
-        reject(error);
-      }, 5000);
-
-      geocoder.getLocation(address, (status: string, result: any) => {
-        clearTimeout(timeout);
-        
-        if (status === 'complete' && result.info === 'OK') {
-          const geocode = result.geocodes[0];
+      
+      console.log(`🔍 开始地理编码: ${address}`);
+      
+      // 使用 AMap.plugin 确保 Geocoder 插件已加载
+      AMap.plugin('AMap.Geocoder', () => {
+        try {
+          console.log(`   ✓ Geocoder 插件加载成功`);
           
-          if (!geocode) {
-            const error = new Error(`地理编码无结果: ${address}`);
-            console.error('❌', error.message);
+          const geocoder = new AMap.Geocoder({
+            city: city || '全国',
+          });
+
+          console.log(`   ✓ Geocoder 实例创建成功，城市: ${city || '全国'}`);
+
+          // 添加10秒超时（增加时间）
+          const timeout = setTimeout(() => {
+            const error = new Error(`地理编码超时: ${address}`);
+            console.error('⏱️', error.message);
             reject(error);
-            return;
-          }
+          }, 10000);
+
+          console.log(`   → 调用 getLocation(${address})`);
           
-          const location = geocode.location;
+          geocoder.getLocation(address, (status: string, result: any) => {
+            console.log(`   ← getLocation 回调触发: status=${status}, info=${result?.info}`);
+            clearTimeout(timeout);
+            
+            if (status === 'complete' && result.info === 'OK') {
+              const geocode = result.geocodes[0];
+              
+              if (!geocode) {
+                const error = new Error(`地理编码无结果: ${address}`);
+                console.error('❌', error.message);
+                reject(error);
+                return;
+              }
+              
+              const location = geocode.location;
 
-          const geocodingResult: GeocodingResult = {
-            coordinate: {
-              lng: location.lng,
-              lat: location.lat,
-            },
-            address: {
-              province: geocode.province,
-              city: geocode.city,
-              district: geocode.district,
-              street: geocode.street,
-              streetNumber: geocode.number,
-              formattedAddress: geocode.formattedAddress,
-            },
-            confidence: geocode.level === 'building' ? 1.0 : 0.8,
-          };
+              const geocodingResult: GeocodingResult = {
+                coordinate: {
+                  lng: location.lng,
+                  lat: location.lat,
+                },
+                address: {
+                  province: geocode.province,
+                  city: geocode.city,
+                  district: geocode.district,
+                  street: geocode.street,
+                  streetNumber: geocode.number,
+                  formattedAddress: geocode.formattedAddress,
+                },
+                confidence: geocode.level === 'building' ? 1.0 : 0.8,
+              };
 
-          console.log(`✅ 地理编码成功: ${address} → (${location.lng}, ${location.lat})`);
-          resolve(geocodingResult);
-        } else {
-          const error = new Error(`地理编码失败: ${address} - ${result.info || status}`);
-          console.error('❌', error.message);
+              console.log(`✅ 地理编码成功: ${address} → (${location.lng}, ${location.lat})`);
+              resolve(geocodingResult);
+            } else {
+              const error = new Error(`地理编码失败: ${address} - ${result?.info || status}`);
+              console.error('❌', error.message);
+              reject(error);
+            }
+          });
+        } catch (error: any) {
+          console.error('❌ Geocoder 创建失败:', error);
           reject(error);
         }
       });
