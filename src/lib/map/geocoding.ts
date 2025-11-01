@@ -119,40 +119,56 @@ export async function reverseGeocode(coordinate: Coordinate): Promise<GeocodingR
 export async function batchGeocode(
   addresses: string[],
   city?: string,
-  concurrency: number = 5 // 并发数限制
+  concurrency: number = 3 // 降低并发数，避免限流
 ): Promise<(GeocodingResult | null)[]> {
   console.log(`🔄 批量地理编码: ${addresses.length} 个地址，并发数: ${concurrency}`);
   
   const results: (GeocodingResult | null)[] = new Array(addresses.length).fill(null);
+  const startTime = Date.now();
   
   // 分批处理
   for (let i = 0; i < addresses.length; i += concurrency) {
     const batch = addresses.slice(i, Math.min(i + concurrency, addresses.length));
     const batchIndex = i;
     
-    console.log(`📦 处理批次 ${Math.floor(i / concurrency) + 1}/${Math.ceil(addresses.length / concurrency)}: ${batch.length} 个地址`);
+    const batchNum = Math.floor(i / concurrency) + 1;
+    const totalBatches = Math.ceil(addresses.length / concurrency);
+    console.log(`📦 处理批次 ${batchNum}/${totalBatches}: ${batch.length} 个地址`);
+    console.log(`   地址列表:`, batch.join(', '));
     
+    const batchStartTime = Date.now();
     const batchResults = await Promise.allSettled(
-      batch.map(address => geocode(address, city))
+      batch.map((address, idx) => {
+        console.log(`   → 正在编码 [${batchIndex + idx + 1}/${addresses.length}]: ${address}`);
+        return geocode(address, city);
+      })
     );
+    const batchDuration = ((Date.now() - batchStartTime) / 1000).toFixed(1);
     
+    let successInBatch = 0;
     batchResults.forEach((result, index) => {
       if (result.status === 'fulfilled') {
         results[batchIndex + index] = result.value;
+        successInBatch++;
       } else {
-        console.warn(`⚠️ 地理编码失败: ${batch[index]} - ${result.reason}`);
+        console.warn(`⚠️ 地理编码失败: ${batch[index]}`);
+        console.warn(`   原因:`, result.reason?.message || result.reason);
         results[batchIndex + index] = null;
       }
     });
     
-    // 短暂延迟，避免请求过快
+    console.log(`✅ 批次 ${batchNum} 完成: ${successInBatch}/${batch.length} 成功 (耗时 ${batchDuration}秒)`);
+    
+    // 增加批次间延迟，避免请求过快
     if (i + concurrency < addresses.length) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      console.log(`⏸️ 等待 300ms 后继续...`);
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
   }
   
   const successCount = results.filter(r => r !== null).length;
-  console.log(`✅ 批量地理编码完成: ${successCount}/${addresses.length} 成功`);
+  const totalDuration = ((Date.now() - startTime) / 1000).toFixed(1);
+  console.log(`✅ 批量地理编码完成: ${successCount}/${addresses.length} 成功 (总耗时 ${totalDuration}秒)`);
   
   return results;
 }
