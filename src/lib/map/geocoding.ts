@@ -97,22 +97,47 @@ export async function reverseGeocode(coordinate: Coordinate): Promise<GeocodingR
 }
 
 /**
- * 批量地理编码
+ * 批量地理编码（带并发控制）
  */
 export async function batchGeocode(
   addresses: string[],
-  city?: string
+  city?: string,
+  concurrency: number = 5 // 并发数限制
 ): Promise<(GeocodingResult | null)[]> {
-  const results = await Promise.allSettled(
-    addresses.map(address => geocode(address, city))
-  );
-
-  return results.map(result => {
-    if (result.status === 'fulfilled') {
-      return result.value;
+  console.log(`🔄 批量地理编码: ${addresses.length} 个地址，并发数: ${concurrency}`);
+  
+  const results: (GeocodingResult | null)[] = new Array(addresses.length).fill(null);
+  
+  // 分批处理
+  for (let i = 0; i < addresses.length; i += concurrency) {
+    const batch = addresses.slice(i, Math.min(i + concurrency, addresses.length));
+    const batchIndex = i;
+    
+    console.log(`📦 处理批次 ${Math.floor(i / concurrency) + 1}/${Math.ceil(addresses.length / concurrency)}: ${batch.length} 个地址`);
+    
+    const batchResults = await Promise.allSettled(
+      batch.map(address => geocode(address, city))
+    );
+    
+    batchResults.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        results[batchIndex + index] = result.value;
+      } else {
+        console.warn(`⚠️ 地理编码失败: ${batch[index]} - ${result.reason}`);
+        results[batchIndex + index] = null;
+      }
+    });
+    
+    // 短暂延迟，避免请求过快
+    if (i + concurrency < addresses.length) {
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
-    return null;
-  });
+  }
+  
+  const successCount = results.filter(r => r !== null).length;
+  console.log(`✅ 批量地理编码完成: ${successCount}/${addresses.length} 成功`);
+  
+  return results;
 }
 
 /**

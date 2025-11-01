@@ -83,13 +83,50 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
       }
 
       console.log(`🗺️ 开始为 ${activities.length} 个景点进行地理编码...`);
+      const startTime = Date.now();
 
-      // 批量地理编码
-      const addresses = activities.map(a => 
-        a.address || `${plan.destination}${a.location}`
-      );
-      
-      const geocodingResults = await batchGeocode(addresses, plan.destination);
+      // 优先使用已有坐标，减少地理编码请求
+      const needGeocode: { activity: Activity; index: number; address: string }[] = [];
+      const coordinates: (Coordinate | null)[] = new Array(activities.length).fill(null);
+
+      activities.forEach((activity, index) => {
+        // 如果活动已有坐标，直接使用
+        if (activity.coordinates) {
+          coordinates[index] = activity.coordinates;
+        } else {
+          // 需要地理编码
+          needGeocode.push({
+            activity,
+            index,
+            address: activity.address || `${plan.destination}${activity.location}`,
+          });
+        }
+      });
+
+      console.log(`📍 ${coordinates.filter(c => c).length} 个景点已有坐标，${needGeocode.length} 个需要地理编码`);
+
+      // 批量地理编码（仅编码需要的）
+      if (needGeocode.length > 0) {
+        const addresses = needGeocode.map(item => item.address);
+        const geocodingResults = await batchGeocode(addresses, plan.destination);
+
+        // 填充地理编码结果
+        geocodingResults.forEach((result, i) => {
+          if (result) {
+            coordinates[needGeocode[i].index] = result.coordinate;
+          }
+        });
+      }
+
+      const successCount = coordinates.filter(c => c).length;
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`✅ 地理编码完成: ${successCount}/${activities.length} 个景点成功 (耗时 ${duration}秒)`);
+
+      if (successCount === 0) {
+        setError('无法获取任何景点的位置信息');
+        setLoading(false);
+        return;
+      }
 
       // 清除旧标记
       markers.forEach(marker => marker.setMap(null));
@@ -97,14 +134,13 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
 
       // 创建新标记
       const newMarkers: any[] = [];
-      const coordinates: Coordinate[] = [];
+      const validCoordinates: Coordinate[] = [];
 
-      geocodingResults.forEach((result, index) => {
-        if (!result) return;
+      coordinates.forEach((coordinate, index) => {
+        if (!coordinate) return;
 
         const activity = activities[index];
-        const coordinate = result.coordinate;
-        coordinates.push(coordinate);
+        validCoordinates.push(coordinate);
 
         // 创建标记
         const marker = new amap.Marker({
@@ -137,13 +173,13 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
       setMarkers(newMarkers);
 
       // 调整视野以包含所有标记
-      if (coordinates.length > 0) {
+      if (validCoordinates.length > 0) {
         const bounds = new amap.Bounds(
-          [coordinates[0].lng, coordinates[0].lat],
-          [coordinates[0].lng, coordinates[0].lat]
+          [validCoordinates[0].lng, validCoordinates[0].lat],
+          [validCoordinates[0].lng, validCoordinates[0].lat]
         );
 
-        coordinates.forEach(coord => {
+        validCoordinates.forEach(coord => {
           bounds.extend([coord.lng, coord.lat]);
         });
 
@@ -151,11 +187,11 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
       }
 
       // 尝试绘制路线（前两个点）
-      if (coordinates.length >= 2) {
+      if (validCoordinates.length >= 2) {
         try {
           const route = await planRoute({
-            origin: coordinates[0],
-            destination: coordinates[1],
+            origin: validCoordinates[0],
+            destination: validCoordinates[1],
             mode: 'walking',
           });
 
@@ -180,7 +216,8 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
         }
       }
 
-      console.log(`✅ 成功加载 ${newMarkers.length} 个地点`);
+      const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`✅ 成功加载 ${newMarkers.length} 个地点 (总耗时 ${totalTime}秒)`);
       setLoading(false);
 
     } catch (error: any) {
