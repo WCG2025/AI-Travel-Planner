@@ -333,11 +333,53 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
             lineJoin: 'round',
             lineCap: 'round',
             showDir: true,  // 显示方向箭头
-            dirColor: color,  // 箭头颜色与线条一致
           });
           
           polyline.setMap(map);
           newPolylines.push(polyline);
+          
+          // 手动添加箭头标记（如果内置箭头不显示）
+          // 在线段中点添加箭头
+          for (let i = 0; i < dayCoordinates.length - 1; i++) {
+            const start = dayCoordinates[i];
+            const end = dayCoordinates[i + 1];
+            
+            // 计算中点
+            const midLng = (start.lng + end.lng) / 2;
+            const midLat = (start.lat + end.lat) / 2;
+            
+            // 计算角度
+            const angle = Math.atan2(end.lat - start.lat, end.lng - start.lng) * 180 / Math.PI;
+            
+            // 创建箭头SVG
+            const arrowSvg = `
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+                <path d="M 5 10 L 15 10 M 11 6 L 15 10 L 11 14" 
+                      fill="none" 
+                      stroke="${color}" 
+                      stroke-width="2" 
+                      stroke-linecap="round" 
+                      stroke-linejoin="round"/>
+              </svg>
+            `;
+            const arrowIcon = `data:image/svg+xml;base64,${btoa(arrowSvg)}`;
+            
+            // 创建箭头标记
+            const arrowMarker = new amap.Marker({
+              position: new amap.LngLat(midLng, midLat),
+              icon: new amap.Icon({
+                size: new amap.Size(20, 20),
+                image: arrowIcon,
+                imageSize: new amap.Size(20, 20),
+              }),
+              angle: angle,
+              offset: new amap.Pixel(-10, -10),
+              zIndex: 50,
+            });
+            
+            arrowMarker.setMap(map);
+            newPolylines.push(arrowMarker); // 存储以便清理
+          }
           
           console.log(`✅ 第${dayIndex + 1}天: 连接 ${dayCoordinates.length} 个景点，颜色: ${color}`);
         }
