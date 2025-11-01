@@ -134,10 +134,14 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
       }
 
       // 清除旧标记和连线
-      markers.forEach(marker => marker.setMap(null));
-      setMarkers([]);
-      polylines.forEach(line => line.setMap(null));
-      setPolylines([]);
+      if (markers.length > 0) {
+        markers.forEach(marker => marker.setMap(null));
+        setMarkers([]);
+      }
+      if (polylines.length > 0) {
+        polylines.forEach(line => line.setMap(null));
+        setPolylines([]);
+      }
 
       // 创建新标记
       const newMarkers: any[] = [];
