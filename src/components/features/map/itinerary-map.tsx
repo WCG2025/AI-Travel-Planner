@@ -332,6 +332,8 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
             strokeStyle: 'solid',
             lineJoin: 'round',
             lineCap: 'round',
+            showDir: true,  // 显示方向箭头
+            dirColor: color,  // 箭头颜色与线条一致
           });
           
           polyline.setMap(map);
