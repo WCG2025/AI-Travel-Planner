@@ -70,10 +70,11 @@ export async function loadAMap(config: AMapLoaderConfig): Promise<any> {
       script.async = true;
       
       // 构建 API URL
+      // 注意：高德地图要求使用 v（不是version）和 plugin（不是plugins）
       const params = new URLSearchParams({
+        v: finalConfig.version || '2.0',
         key: finalConfig.key,
-        version: finalConfig.version || '2.0',
-        plugins: (finalConfig.plugins || []).join(','),
+        plugin: (finalConfig.plugins || []).join(','),
       });
       
       script.src = `https://webapi.amap.com/maps?${params.toString()}`;
