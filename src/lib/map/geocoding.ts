@@ -17,9 +17,26 @@ export async function geocode(address: string, city?: string): Promise<Geocoding
         city: city || '全国',
       });
 
+      // 添加5秒超时
+      const timeout = setTimeout(() => {
+        const error = new Error(`地理编码超时: ${address}`);
+        console.error('⏱️', error.message);
+        reject(error);
+      }, 5000);
+
       geocoder.getLocation(address, (status: string, result: any) => {
+        clearTimeout(timeout);
+        
         if (status === 'complete' && result.info === 'OK') {
           const geocode = result.geocodes[0];
+          
+          if (!geocode) {
+            const error = new Error(`地理编码无结果: ${address}`);
+            console.error('❌', error.message);
+            reject(error);
+            return;
+          }
+          
           const location = geocode.location;
 
           const geocodingResult: GeocodingResult = {
@@ -41,13 +58,13 @@ export async function geocode(address: string, city?: string): Promise<Geocoding
           console.log(`✅ 地理编码成功: ${address} → (${location.lng}, ${location.lat})`);
           resolve(geocodingResult);
         } else {
-          const error = new Error(`地理编码失败: ${result.info || status}`);
+          const error = new Error(`地理编码失败: ${address} - ${result.info || status}`);
           console.error('❌', error.message);
           reject(error);
         }
       });
-    } catch (error) {
-      console.error('❌ 地理编码异常:', error);
+    } catch (error: any) {
+      console.error('❌ 地理编码异常:', address, error);
       reject(error);
     }
   });
