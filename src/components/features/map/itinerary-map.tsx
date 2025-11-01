@@ -145,37 +145,54 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
       const validCoordinates: Coordinate[] = [];
 
       coordinates.forEach((coordinate, index) => {
-        if (!coordinate) return;
+        // 严格验证坐标
+        if (!coordinate || 
+            typeof coordinate.lng !== 'number' || 
+            typeof coordinate.lat !== 'number' ||
+            isNaN(coordinate.lng) || 
+            isNaN(coordinate.lat) ||
+            coordinate.lng < -180 || coordinate.lng > 180 ||
+            coordinate.lat < -90 || coordinate.lat > 90) {
+          const activity = activities[index];
+          console.warn(`⚠️ 景点 [${index + 1}] "${activity?.title}" 坐标无效，跳过标记创建`);
+          return;
+        }
 
         const activity = activities[index];
         validCoordinates.push(coordinate);
 
-        // 创建标记
-        const marker = new amap.Marker({
-          position: [coordinate.lng, coordinate.lat],
-          title: activity.title,
-          icon: new amap.Icon({
-            size: new amap.Size(32, 32),
-            image: getMarkerIconUrl(activity.type),
-            imageSize: new amap.Size(32, 32),
-          }),
-          offset: new amap.Pixel(-16, -32),
-        });
-
-        // 点击标记
-        marker.on('click', () => {
-          setSelectedActivity(activity);
-          
-          // 创建信息窗口
-          const infoWindow = new amap.InfoWindow({
-            content: createInfoWindowContent(activity),
-            offset: new amap.Pixel(0, -32),
+        try {
+          // 创建标记
+          const marker = new amap.Marker({
+            position: [coordinate.lng, coordinate.lat],
+            title: activity.title,
+            icon: new amap.Icon({
+              size: new amap.Size(32, 32),
+              image: getMarkerIconUrl(activity.type),
+              imageSize: new amap.Size(32, 32),
+            }),
+            offset: new amap.Pixel(-16, -32),
           });
-          infoWindow.open(map, marker.getPosition());
-        });
 
-        marker.setMap(map);
-        newMarkers.push(marker);
+          // 点击标记
+          marker.on('click', () => {
+            setSelectedActivity(activity);
+            
+            // 创建信息窗口
+            const infoWindow = new amap.InfoWindow({
+              content: createInfoWindowContent(activity),
+              offset: new amap.Pixel(0, -32),
+            });
+            infoWindow.open(map, marker.getPosition());
+          });
+
+          marker.setMap(map);
+          newMarkers.push(marker);
+          
+          console.log(`✅ 创建标记: "${activity.title}" (${coordinate.lng.toFixed(6)}, ${coordinate.lat.toFixed(6)})`);
+        } catch (error: any) {
+          console.error(`❌ 创建标记失败: "${activity.title}"`, error.message);
+        }
       });
 
       setMarkers(newMarkers);
