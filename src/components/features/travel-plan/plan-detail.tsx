@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExpenseList } from '@/components/features/expenses/expense-list';
+import { ItineraryMap } from '@/components/features/map/itinerary-map';
 import type { TravelPlan, Activity } from '@/types/travel-plan.types';
 
 interface PlanDetailProps {
@@ -65,8 +66,9 @@ export function PlanDetail({ plan }: PlanDetailProps) {
       </Card>
       
       {/* 标签页导航 */}
-      <TabsList className="grid w-full grid-cols-2">
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="itinerary">行程安排</TabsTrigger>
+        <TabsTrigger value="map">地图导航</TabsTrigger>
         <TabsTrigger value="expenses">费用管理</TabsTrigger>
       </TabsList>
       
@@ -213,6 +215,25 @@ export function PlanDetail({ plan }: PlanDetailProps) {
           )}
         </div>
       )}
+      </TabsContent>
+      
+      {/* 地图导航标签页 */}
+      <TabsContent value="map">
+        <Card>
+          <CardHeader>
+            <CardTitle>地图导航</CardTitle>
+            <CardDescription>
+              在地图上查看行程中的所有景点和路线
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ItineraryMap 
+              plan={plan}
+              apiKey={process.env.NEXT_PUBLIC_AMAP_KEY || ''}
+              className="h-[600px]"
+            />
+          </CardContent>
+        </Card>
       </TabsContent>
       
       {/* 费用管理标签页 */}
