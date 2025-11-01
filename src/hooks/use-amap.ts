@@ -16,16 +16,38 @@ interface UseAMapOptions {
 }
 
 export function useAMap({ apiKey, onLoad, onError }: UseAMapOptions) {
+  const initialLoaded = isAMapLoaded();
+  
   const [state, setState] = useState<MapState>({
-    loaded: isAMapLoaded(),
+    loaded: initialLoaded,
     error: null,
     center: null,
     zoom: 12,
   });
 
+  console.log('🔧 useAMap 初始化:', {
+    hasApiKey: !!apiKey,
+    initialLoaded,
+    currentLoaded: state.loaded,
+  });
+
   // 加载地图
   const load = useCallback(async () => {
+    console.log('🔍 load() 被调用:', {
+      state_loaded: state.loaded,
+      hasApiKey: !!apiKey,
+      isAMapLoaded: isAMapLoaded(),
+    });
+
     if (state.loaded) {
+      console.log('⏭️ 地图已加载，跳过');
+      // 如果已加载，但还没有调用 onLoad，需要调用
+      if (onLoad && isAMapLoaded()) {
+        const AMap = (window as any).AMap;
+        if (AMap) {
+          onLoad(AMap);
+        }
+      }
       return;
     }
 
