@@ -7,15 +7,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { MapContainer } from './map-container';
-import { geocode, batchGeocode } from '@/lib/map/geocoding';
-import { planRoute, formatDistance, formatDuration } from '@/lib/map/route-planning';
-import { Loader2, Navigation, MapPin, Info } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { batchGeocode } from '@/lib/map/geocoding';
+import { Loader2, MapPin, Info } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { TravelPlan, Activity, ItineraryDay } from '@/types/travel-plan.types';
-import type { Coordinate, TravelMode } from '@/types/map.types';
+import type { Coordinate } from '@/types/map.types';
 
 interface ItineraryMapProps {
   plan: TravelPlan;
@@ -374,23 +371,6 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
           </div>
         )}
 
-        {/* 路线信息 */}
-        {routeInfo && !loading && (
-          <div className="absolute bottom-4 left-4 z-10">
-            <Card>
-              <CardContent className="p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Navigation className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">路线信息</span>
-                </div>
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <div>距离: {formatDistance(routeInfo.distance)}</div>
-                  <div>时间: {formatDuration(routeInfo.duration)}</div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
         {/* 图例 */}
         {markers.length > 0 && !loading && (
