@@ -348,11 +348,10 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
             const midLng = (start.lng + end.lng) / 2;
             const midLat = (start.lat + end.lat) / 2;
             
-            // 计算角度（从北向顺时针，高德地图的角度系统）
-            // atan2 返回的是数学角度（从东向逆时针），需要转换
-            const mathAngle = Math.atan2(end.lat - start.lat, end.lng - start.lng) * 180 / Math.PI;
-            // 转换为导航角度：从北向顺时针
-            const angle = 90 - mathAngle;
+            // 计算角度：从起点到终点的方向
+            // Math.atan2(dy, dx) 返回弧度，转换为角度
+            // 0° = 向东, 90° = 向北, -90° = 向南, ±180° = 向西
+            const angle = Math.atan2(end.lat - start.lat, end.lng - start.lng) * 180 / Math.PI;
             
             // 创建箭头SVG
             const arrowSvg = `
