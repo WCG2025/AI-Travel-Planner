@@ -8,84 +8,46 @@ import type { Coordinate, Address, GeocodingResult } from '@/types/map.types';
 
 /**
  * 地理编码：地址 → 坐标
+ * 调用服务端 API，使用高德 Web服务
  */
 export async function geocode(address: string, city?: string): Promise<GeocodingResult> {
-  return new Promise((resolve, reject) => {
-    try {
-      const AMap = getAMap();
-      
-      console.log(`🔍 开始地理编码: ${address}`);
-      
-      // 使用 AMap.plugin 确保 Geocoder 插件已加载
-      AMap.plugin('AMap.Geocoder', () => {
-        try {
-          console.log(`   ✓ Geocoder 插件加载成功`);
-          
-          const geocoder = new AMap.Geocoder({
-            city: city || '全国',
-          });
+  try {
+    console.log(`🔍 开始地理编码: ${address} (城市: ${city || '全国'})`);
+    
+    // 调用服务端 API
+    const response = await fetch('/api/geocode', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        address,
+        city,
+      }),
+    });
 
-          console.log(`   ✓ Geocoder 实例创建成功，城市: ${city || '全国'}`);
+    const data = await response.json();
 
-          // 添加10秒超时（增加时间）
-          const timeout = setTimeout(() => {
-            const error = new Error(`地理编码超时: ${address}`);
-            console.error('⏱️', error.message);
-            reject(error);
-          }, 10000);
-
-          console.log(`   → 调用 getLocation(${address})`);
-          
-          geocoder.getLocation(address, (status: string, result: any) => {
-            console.log(`   ← getLocation 回调触发: status=${status}, info=${result?.info}`);
-            clearTimeout(timeout);
-            
-            if (status === 'complete' && result.info === 'OK') {
-              const geocode = result.geocodes[0];
-              
-              if (!geocode) {
-                const error = new Error(`地理编码无结果: ${address}`);
-                console.error('❌', error.message);
-                reject(error);
-                return;
-              }
-              
-              const location = geocode.location;
-
-              const geocodingResult: GeocodingResult = {
-                coordinate: {
-                  lng: location.lng,
-                  lat: location.lat,
-                },
-                address: {
-                  province: geocode.province,
-                  city: geocode.city,
-                  district: geocode.district,
-                  street: geocode.street,
-                  streetNumber: geocode.number,
-                  formattedAddress: geocode.formattedAddress,
-                },
-                confidence: geocode.level === 'building' ? 1.0 : 0.8,
-              };
-
-              console.log(`✅ 地理编码成功: ${address} → (${location.lng}, ${location.lat})`);
-              resolve(geocodingResult);
-            } else {
-              const error = new Error(`地理编码失败: ${address} - ${result?.info || status}`);
-              console.error('❌', error.message);
-              reject(error);
-            }
-          });
-        } catch (error: any) {
-          console.error('❌ Geocoder 创建失败:', error);
-          reject(error);
-        }
-      });
-    } catch (error: any) {
-      console.error('❌ 地理编码异常:', address, error);
-      reject(error);
+    if (!response.ok || !data.success) {
+      const error = new Error(data.error || `地理编码失败: ${address}`);
+      console.error('❌', error.message);
+      throw error;
     }
-  });
+
+    const result: GeocodingResult = {
+      coordinate: data.coordinate,
+      address: data.address,
+      confidence: data.confidence || 0.8,
+    };
+
+    console.log(`✅ 地理编码成功: ${address} → (${result.coordinate.lng}, ${result.coordinate.lat})`);
+    
+    return result;
+    
+  } catch (error: any) {
+    console.error('❌ 地理编码异常:', address, error);
+    throw error;
+  }
 }
 
 /**
@@ -133,13 +95,14 @@ export async function reverseGeocode(coordinate: Coordinate): Promise<GeocodingR
 
 /**
  * 批量地理编码（带并发控制）
+ * 使用服务端API，更稳定可靠
  */
 export async function batchGeocode(
   addresses: string[],
   city?: string,
-  concurrency: number = 3 // 降低并发数，避免限流
+  concurrency: number = 5 // 服务端API更稳定，可以提高并发
 ): Promise<(GeocodingResult | null)[]> {
-  console.log(`🔄 批量地理编码: ${addresses.length} 个地址，并发数: ${concurrency}`);
+  console.log(`🔄 批量地理编码: ${addresses.length} 个地址，并发数: ${concurrency} (使用服务端API)`);
   
   const results: (GeocodingResult | null)[] = new Array(addresses.length).fill(null);
   const startTime = Date.now();
@@ -177,10 +140,10 @@ export async function batchGeocode(
     
     console.log(`✅ 批次 ${batchNum} 完成: ${successInBatch}/${batch.length} 成功 (耗时 ${batchDuration}秒)`);
     
-    // 增加批次间延迟，避免请求过快
+    // 减少批次间延迟（服务端API更稳定）
     if (i + concurrency < addresses.length) {
-      console.log(`⏸️ 等待 300ms 后继续...`);
-      await new Promise(resolve => setTimeout(resolve, 300));
+      console.log(`⏸️ 等待 100ms 后继续...`);
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
   

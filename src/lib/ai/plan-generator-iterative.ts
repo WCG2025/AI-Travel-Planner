@@ -229,15 +229,13 @@ async function generateSingleDay(
 3. 所有键必须双引号："day"不是day
 4. 所有字符串值必须双引号："北京"不是北京
 5. 数字不加引号：100不是"100"
-6. coordinates字段必须包含真实的经纬度
 
 【示例-正确】
-{"day":1,"title":"探索北京","activities":[{"time":"09:00","title":"天安门","description":"游览天安门广场","location":"天安门广场","cost":0,"type":"attraction","tips":["早起避开人群"],"coordinates":{"lng":116.397428,"lat":39.90923}}],"estimatedCost":200}
+{"day":1,"title":"探索北京","activities":[{"time":"09:00","title":"天安门","description":"游览天安门广场","location":"天安门","address":"北京市东城区东长安街","cost":0,"type":"attraction","tips":["早起避开人群"]}],"estimatedCost":200}
 
 【示例-错误】
 {day:1,title:探索北京}  ❌缺少引号
 {"day":"1"}  ❌数字加了引号
-{"coordinates":"116.3,39.9"}  ❌坐标不是对象格式
 
 从第一个字符{到最后一个字符}，中间不能有任何其他内容。`;
 
@@ -254,13 +252,13 @@ ${input.startDate ? `日期：${dateStr}` : `相对日期：${dateStr}`}
 要求：3-4个活动
 
 返回格式(严格遵守)：
-{"day":${dayNumber}${input.startDate ? `,"date":"${dateStr}"` : ''},"title":"主题","activities":[{"time":"09:00","title":"景点名","description":"简介","location":"地址","cost":50,"type":"attraction","tips":["提示1","提示2"],"coordinates":{"lng":118.796877,"lat":32.057236}}],"estimatedCost":300}
+{"day":${dayNumber}${input.startDate ? `,"date":"${dateStr}"` : ''},"title":"主题","activities":[{"time":"09:00","title":"景点名","description":"简介","location":"景点名称","address":"详细地址","cost":50,"type":"attraction","tips":["提示1","提示2"]}],"estimatedCost":300}
 
 重要说明：
 - ${input.startDate ? 'date字段必须是 yyyy-MM-dd 格式的具体日期' : 'date字段可以省略，因为使用相对日期模式'}
 - type只能是: attraction,meal,transportation,accommodation,other
-- coordinates字段必须包含准确的经纬度坐标(lng和lat)，用于在地图上显示
-- 请根据实际景点位置提供真实坐标
+- location字段应为景点名称（如"中山陵"）
+- address字段应为详细地址（如"南京市玄武区石象路7号"），用于地理编码
 直接返回JSON，不要其他内容`;
 
   // 如果有上次的错误，添加错误反馈
