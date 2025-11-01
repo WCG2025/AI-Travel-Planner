@@ -268,9 +268,14 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
           });
 
           polyline.setMap(map);
-        } catch (error) {
-          console.error('路线规划失败:', error);
+          console.log(`✅ 路线绘制成功`);
+        } catch (error: any) {
+          console.warn('⚠️ 路线规划失败（不影响地图显示）:', error?.message || error);
+          // 路线规划失败不影响地图基本功能
+          setRouteInfo(null);
         }
+      } else {
+        console.log(`ℹ️ 有效坐标 ${validCoordinates.length} 个，跳过路线规划`);
       }
 
       const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
