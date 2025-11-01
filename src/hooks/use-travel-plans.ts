@@ -31,23 +31,43 @@ export function useTravelPlans() {
       if (dbError) throw dbError;
       
       // 转换数据格式
-      const transformedPlans: TravelPlan[] = (data || []).map((item) => ({
-        id: item.id,
-        userId: item.user_id,
-        title: item.title,
-        destination: item.destination,
-        startDate: item.start_date,
-        endDate: item.end_date,
-        days: Math.ceil(
-          (new Date(item.end_date).getTime() - new Date(item.start_date).getTime()) / 
-          (1000 * 60 * 60 * 24)
-        ) + 1,
-        budget: item.budget || undefined,
-        preferences: item.preferences || undefined,
-        itinerary: item.itinerary || [],
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-      }));
+      const transformedPlans: TravelPlan[] = (data || []).map((item) => {
+        // 优先使用数据库中的 days 字段
+        let days = item.days;
+        
+        // 如果没有 days，尝试从日期计算
+        if (!days && item.start_date && item.end_date) {
+          days = Math.ceil(
+            (new Date(item.end_date).getTime() - new Date(item.start_date).getTime()) / 
+            (1000 * 60 * 60 * 24)
+          ) + 1;
+        }
+        
+        // 如果还是没有，从 itinerary 数组长度获取
+        if (!days && item.itinerary && Array.isArray(item.itinerary)) {
+          days = item.itinerary.length;
+        }
+        
+        // 默认值
+        if (!days) {
+          days = 1;
+        }
+        
+        return {
+          id: item.id,
+          userId: item.user_id,
+          title: item.title,
+          destination: item.destination,
+          startDate: item.start_date || undefined,
+          endDate: item.end_date || undefined,
+          days,
+          budget: item.budget || undefined,
+          preferences: item.preferences || undefined,
+          itinerary: item.itinerary || [],
+          createdAt: item.created_at,
+          updatedAt: item.updated_at,
+        };
+      });
       
       setPlans(transformedPlans);
     } catch (err: any) {

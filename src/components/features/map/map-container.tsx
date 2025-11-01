@@ -30,6 +30,12 @@ export function MapContainer({
   const [map, setMap] = useState<any>(null);
   const [amap, setAMap] = useState<any>(null);
 
+  // 调试信息
+  console.log('📦 MapContainer 渲染:', {
+    hasApiKey: !!apiKey,
+    apiKeyPreview: apiKey ? `${apiKey.substring(0, 8)}...` : '无',
+  });
+
   // 加载高德地图 API
   const { loaded, error: loadError } = useAMap({
     apiKey,

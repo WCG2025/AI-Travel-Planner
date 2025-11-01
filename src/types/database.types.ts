@@ -37,6 +37,7 @@ export interface Database {
           destination: string;
           start_date: string | null;  // 可选：支持相对日期模式
           end_date: string | null;    // 可选：支持相对日期模式
+          days: number | null;        // 行程天数
           budget: number | null;
           preferences: Json;
           itinerary: Json;
@@ -50,6 +51,7 @@ export interface Database {
           destination: string;
           start_date?: string | null;  // 可选
           end_date?: string | null;    // 可选
+          days?: number | null;        // 可选
           budget?: number | null;
           preferences?: Json;
           itinerary?: Json;
@@ -63,6 +65,7 @@ export interface Database {
           destination?: string;
           start_date?: string | null;
           end_date?: string | null;
+          days?: number | null;
           budget?: number | null;
           preferences?: Json;
           itinerary?: Json;

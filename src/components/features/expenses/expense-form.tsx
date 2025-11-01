@@ -59,18 +59,44 @@ export function ExpenseForm({ planId, onSubmit, loading = false, initialValues }
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   
+  // 获取默认日期
+  const getDefaultDate = (): Date => {
+    if (initialValues?.date) {
+      const parsedDate = new Date(initialValues.date);
+      // 确保日期有效
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate;
+      }
+    }
+    return new Date();
+  };
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       category: initialValues?.category || '',
       amount: initialValues?.amount || undefined,
       description: initialValues?.description || '',
-      date: initialValues?.date ? new Date(initialValues.date) : new Date(),
+      date: getDefaultDate(),
     },
   });
   
   // 处理表单提交
   const handleFormSubmit = async (values: FormValues) => {
+    console.log('📝 表单提交，原始 values:', values);
+    
+    // 确保日期存在
+    if (!values.date) {
+      console.error('❌ 日期字段缺失:', values);
+      return;
+    }
+    
+    // 验证日期是否有效
+    if (isNaN(values.date.getTime())) {
+      console.error('❌ 日期无效:', values.date);
+      return;
+    }
+    
     const input: ExpenseInput = {
       planId,
       category: values.category as ExpenseCategory,
@@ -79,6 +105,7 @@ export function ExpenseForm({ planId, onSubmit, loading = false, initialValues }
       date: format(values.date, 'yyyy-MM-dd'),
     };
     
+    console.log('✅ 准备提交的输入:', input);
     await onSubmit(input);
   };
   
@@ -136,7 +163,11 @@ export function ExpenseForm({ planId, onSubmit, loading = false, initialValues }
         form.setValue('description', parsed.description);
       }
       if (parsed.date) {
-        form.setValue('date', new Date(parsed.date));
+        const parsedDate = new Date(parsed.date);
+        // 确保日期有效
+        if (!isNaN(parsedDate.getTime())) {
+          form.setValue('date', parsedDate);
+        }
       }
       
       // 切换到表单模式
@@ -259,7 +290,12 @@ export function ExpenseForm({ planId, onSubmit, loading = false, initialValues }
                       <Calendar
                         mode="single"
                         selected={field.value}
-                        onSelect={field.onChange}
+                        onSelect={(date) => {
+                          // 确保日期不为 undefined
+                          if (date) {
+                            field.onChange(date);
+                          }
+                        }}
                         disabled={(date) => date > new Date()}
                         initialFocus
                       />

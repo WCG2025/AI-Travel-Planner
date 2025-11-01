@@ -43,6 +43,14 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
 
+  // 调试信息
+  console.log('🗺️ ItineraryMap 渲染:', {
+    hasApiKey: !!apiKey,
+    apiKeyLength: apiKey?.length,
+    planId: plan.id,
+    itineraryCount: plan.itinerary?.length,
+  });
+
   // 地图准备好后的回调
   const handleMapReady = useCallback((mapInstance: any, amapInstance: any) => {
     setMap(mapInstance);

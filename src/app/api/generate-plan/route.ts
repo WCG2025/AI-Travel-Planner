@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
         destination: plan.destination,
         start_date: plan.startDate || null,  // 可选
         end_date: plan.endDate || null,      // 可选
+        days: plan.days,                     // 行程天数
         budget: plan.budget || null,
         preferences: plan.preferences || {},
         itinerary: plan.itinerary || [],
