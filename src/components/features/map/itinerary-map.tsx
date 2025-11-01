@@ -349,9 +349,11 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
             const midLat = (start.lat + end.lat) / 2;
             
             // 计算角度：从起点到终点的方向
-            // Math.atan2(dy, dx) 返回弧度，转换为角度
-            // 0° = 向东, 90° = 向北, -90° = 向南, ±180° = 向西
-            const angle = Math.atan2(end.lat - start.lat, end.lng - start.lng) * 180 / Math.PI;
+            // Math.atan2 返回逆时针角度，AMap.Marker.angle 需要顺时针角度
+            const mathAngle = Math.atan2(end.lat - start.lat, end.lng - start.lng) * 180 / Math.PI;
+            const angle = -mathAngle;  // 取反：逆时针 → 顺时针
+            
+            console.log(`   箭头 ${i+1}: (${start.lng.toFixed(4)}, ${start.lat.toFixed(4)}) → (${end.lng.toFixed(4)}, ${end.lat.toFixed(4)}), 角度: ${angle.toFixed(1)}°`);
             
             // 创建箭头SVG
             const arrowSvg = `
