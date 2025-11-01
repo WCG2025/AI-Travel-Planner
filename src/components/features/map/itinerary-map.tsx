@@ -245,19 +245,44 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
 
           if (validCoords.length === 1) {
             // 只有一个点，直接设置中心
-            map.setZoomAndCenter(15, [validCoords[0].lng, validCoords[0].lat]);
+            console.log(`📍 单点模式: 设置中心为 [${validCoords[0].lng}, ${validCoords[0].lat}]`);
+            map.setZoomAndCenter(15, new amap.LngLat(validCoords[0].lng, validCoords[0].lat));
           } else {
-            // 多个点，设置边界
-            const bounds = new amap.Bounds(
-              [validCoords[0].lng, validCoords[0].lat],
-              [validCoords[0].lng, validCoords[0].lat]
-            );
-
+            // 多个点，计算中心点和合适的缩放级别
+            console.log(`📍 多点模式: ${validCoords.length} 个坐标`);
+            
+            // 计算中心点
+            let sumLng = 0, sumLat = 0;
             validCoords.forEach(coord => {
-              bounds.extend([coord.lng, coord.lat]);
+              sumLng += coord.lng;
+              sumLat += coord.lat;
             });
-
-            map.setBounds(bounds, false, [60, 60, 60, 60]);
+            const centerLng = sumLng / validCoords.length;
+            const centerLat = sumLat / validCoords.length;
+            
+            // 计算合适的缩放级别（根据坐标分布）
+            let maxLng = validCoords[0].lng, minLng = validCoords[0].lng;
+            let maxLat = validCoords[0].lat, minLat = validCoords[0].lat;
+            validCoords.forEach(coord => {
+              maxLng = Math.max(maxLng, coord.lng);
+              minLng = Math.min(minLng, coord.lng);
+              maxLat = Math.max(maxLat, coord.lat);
+              minLat = Math.min(minLat, coord.lat);
+            });
+            
+            const lngSpan = maxLng - minLng;
+            const latSpan = maxLat - minLat;
+            const maxSpan = Math.max(lngSpan, latSpan);
+            
+            // 根据跨度确定缩放级别
+            let zoom = 15;
+            if (maxSpan > 0.5) zoom = 11;
+            else if (maxSpan > 0.2) zoom = 12;
+            else if (maxSpan > 0.1) zoom = 13;
+            else if (maxSpan > 0.05) zoom = 14;
+            
+            console.log(`📍 设置中心: [${centerLng.toFixed(6)}, ${centerLat.toFixed(6)}], 缩放: ${zoom}`);
+            map.setZoomAndCenter(zoom, new amap.LngLat(centerLng, centerLat));
           }
         } catch (error: any) {
           console.error('❌ 设置地图边界失败:', error);

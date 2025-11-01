@@ -72,14 +72,14 @@ export function MapContainer({
         scrollWheel: finalConfig.enableScrollWheelZoom,
       });
 
-      // 添加控件
-      if (finalConfig.showScale) {
-        mapInstance.addControl(new amap.Scale());
-      }
+      // 添加控件（暂时禁用以诊断 NaN 问题）
+      // if (finalConfig.showScale) {
+      //   mapInstance.addControl(new amap.Scale());
+      // }
 
-      if (finalConfig.showCompass) {
-        mapInstance.addControl(new amap.ToolBar());
-      }
+      // if (finalConfig.showCompass) {
+      //   mapInstance.addControl(new amap.ToolBar());
+      // }
 
       // 显示路况
       if (finalConfig.showTraffic) {
