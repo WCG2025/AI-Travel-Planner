@@ -175,21 +175,16 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
           // 只有完全验证通过，才加入 validCoordinates
           validCoordinates.push(coordinate);
           
-          // 创建标记，简化配置避免 NaN
+          // 创建标记，使用默认图标（更稳定）
           const marker = new amap.Marker({
             position: new amap.LngLat(coordinate.lng, coordinate.lat),
             title: activity.title,
             label: {
               content: activity.title,
-              offset: new amap.Pixel(0, -40),
+              offset: new amap.Pixel(0, -30),
               direction: 'top',
             },
-            icon: new amap.Icon({
-              size: new amap.Size(32, 32),
-              image: getMarkerIconUrl(activity.type),
-              imageSize: new amap.Size(32, 32),
-            }),
-            offset: new amap.Pixel(-16, -32),
+            // 使用默认红点图标，不自定义（避免图标加载问题）
             zIndex: 100,
           });
 
