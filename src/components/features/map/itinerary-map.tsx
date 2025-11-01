@@ -182,16 +182,48 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
 
       // 调整视野以包含所有标记
       if (validCoordinates.length > 0) {
-        const bounds = new amap.Bounds(
-          [validCoordinates[0].lng, validCoordinates[0].lat],
-          [validCoordinates[0].lng, validCoordinates[0].lat]
-        );
+        try {
+          // 检查坐标有效性
+          const validCoords = validCoordinates.filter(coord => 
+            coord && 
+            typeof coord.lng === 'number' && 
+            typeof coord.lat === 'number' &&
+            !isNaN(coord.lng) && 
+            !isNaN(coord.lat) &&
+            coord.lng >= -180 && coord.lng <= 180 &&
+            coord.lat >= -90 && coord.lat <= 90
+          );
 
-        validCoordinates.forEach(coord => {
-          bounds.extend([coord.lng, coord.lat]);
-        });
+          if (validCoords.length === 0) {
+            console.warn('⚠️ 没有有效的坐标用于设置地图边界');
+            return;
+          }
 
-        map.setBounds(bounds, false, [60, 60, 60, 60]);
+          console.log(`📍 使用 ${validCoords.length} 个有效坐标设置地图边界`);
+
+          if (validCoords.length === 1) {
+            // 只有一个点，直接设置中心
+            map.setZoomAndCenter(15, [validCoords[0].lng, validCoords[0].lat]);
+          } else {
+            // 多个点，设置边界
+            const bounds = new amap.Bounds(
+              [validCoords[0].lng, validCoords[0].lat],
+              [validCoords[0].lng, validCoords[0].lat]
+            );
+
+            validCoords.forEach(coord => {
+              bounds.extend([coord.lng, coord.lat]);
+            });
+
+            map.setBounds(bounds, false, [60, 60, 60, 60]);
+          }
+        } catch (error: any) {
+          console.error('❌ 设置地图边界失败:', error);
+          // 使用默认中心点
+          if (validCoordinates[0]) {
+            map.setZoomAndCenter(12, [validCoordinates[0].lng, validCoordinates[0].lat]);
+          }
+        }
       }
 
       // 尝试绘制路线（前两个点）

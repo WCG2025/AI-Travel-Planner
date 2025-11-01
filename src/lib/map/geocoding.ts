@@ -100,7 +100,7 @@ export async function reverseGeocode(coordinate: Coordinate): Promise<GeocodingR
 export async function batchGeocode(
   addresses: string[],
   city?: string,
-  concurrency: number = 5 // 服务端API更稳定，可以提高并发
+  concurrency: number = 2 // 降低并发，避免 QPS 限流
 ): Promise<(GeocodingResult | null)[]> {
   console.log(`🔄 批量地理编码: ${addresses.length} 个地址，并发数: ${concurrency} (使用服务端API)`);
   
@@ -140,10 +140,10 @@ export async function batchGeocode(
     
     console.log(`✅ 批次 ${batchNum} 完成: ${successInBatch}/${batch.length} 成功 (耗时 ${batchDuration}秒)`);
     
-    // 减少批次间延迟（服务端API更稳定）
+    // 增加批次间延迟，避免 QPS 限流
     if (i + concurrency < addresses.length) {
-      console.log(`⏸️ 等待 100ms 后继续...`);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      console.log(`⏸️ 等待 500ms 后继续...`);
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
   
