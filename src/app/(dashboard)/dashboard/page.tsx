@@ -1,8 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { PlanManager } from '@/components/features/travel-plan/plan-manager';
-import { Separator } from '@/components/ui/separator';
-import { VoiceTestSection } from '@/components/features/voice/voice-test-section';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -26,11 +24,6 @@ export default async function DashboardPage() {
 
       {/* 旅行计划管理 */}
       <PlanManager />
-
-      <Separator className="my-8" />
-
-      {/* 语音识别测试区域 */}
-      <VoiceTestSection />
     </div>
   );
 }
