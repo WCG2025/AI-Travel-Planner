@@ -24,6 +24,18 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  
+  // 支持运行时环境变量
+  // 允许在 Docker 容器启动时注入环境变量
+  env: {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_XFYUN_APP_ID: process.env.NEXT_PUBLIC_XFYUN_APP_ID,
+    NEXT_PUBLIC_XFYUN_API_KEY: process.env.NEXT_PUBLIC_XFYUN_API_KEY,
+    NEXT_PUBLIC_XFYUN_API_SECRET: process.env.NEXT_PUBLIC_XFYUN_API_SECRET,
+    NEXT_PUBLIC_AMAP_KEY: process.env.NEXT_PUBLIC_AMAP_KEY,
+    NEXT_PUBLIC_AMAP_SECRET: process.env.NEXT_PUBLIC_AMAP_SECRET,
+  },
 };
 
 export default nextConfig;
