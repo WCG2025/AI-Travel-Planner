@@ -229,6 +229,7 @@ async function generateSingleDay(
 3. 所有键必须双引号："day"不是day
 4. 所有字符串值必须双引号："北京"不是北京
 5. 数字不加引号：100不是"100"
+6. 【重要】每天的景点必须不同，严禁出现重复景点！
 
 【示例-正确】
 {"day":1,"title":"探索北京","activities":[{"time":"09:00","title":"天安门","description":"游览天安门广场","location":"天安门","address":"北京市东城区东长安街","cost":0,"type":"attraction","tips":["早起避开人群"]}],"estimatedCost":200}
@@ -236,12 +237,24 @@ async function generateSingleDay(
 【示例-错误】
 {day:1,title:探索北京}  ❌缺少引号
 {"day":"1"}  ❌数字加了引号
+{"title":"天安门"}  ❌如果其他天已有天安门，不能再出现
 
 从第一个字符{到最后一个字符}，中间不能有任何其他内容。`;
 
+  // 构建已访问景点列表
+  const visitedLocations = new Set<string>();
+  previousDays.forEach(d => {
+    d.activities.forEach(a => {
+      if (a.title) visitedLocations.add(a.title);
+      if (a.location) visitedLocations.add(a.location);
+    });
+  });
+  
+  const visitedList = Array.from(visitedLocations);
+  
   // 构建提示词
   const previousContext = previousDays.length > 0
-    ? `已安排：${previousDays.map(d => `第${d.day}天-${d.title}`).join('，')}\n`
+    ? `已安排景点：${previousDays.map(d => `第${d.day}天-${d.title} (${d.activities.map(a => a.title).join('、')})`).join('；')}\n`
     : '';
   
   let prompt = `${previousContext}生成第${dayNumber}天行程
@@ -251,6 +264,8 @@ ${input.startDate ? `日期：${dateStr}` : `相对日期：${dateStr}`}
 预算：${input.budget || 1000}元
 要求：3-4个活动
 
+${visitedList.length > 0 ? `⚠️ 严禁重复以下景点：${visitedList.join('、')}\n` : ''}
+
 返回格式(严格遵守)：
 {"day":${dayNumber}${input.startDate ? `,"date":"${dateStr}"` : ''},"title":"主题","activities":[{"time":"09:00","title":"景点名","description":"简介","location":"景点名称","address":"详细地址","cost":50,"type":"attraction","tips":["提示1","提示2"]}],"estimatedCost":300}
 
@@ -259,6 +274,8 @@ ${input.startDate ? `日期：${dateStr}` : `相对日期：${dateStr}`}
 - type只能是: attraction,meal,transportation,accommodation,other
 - location字段应为景点名称（如"中山陵"）
 - address字段应为详细地址（如"南京市玄武区石象路7号"），用于地理编码
+- 【硬性要求】每个景点/活动的title和location必须与之前的天不同，严禁重复！
+- 【硬性要求】如果发现重复，必须选择其他景点替代
 直接返回JSON，不要其他内容`;
 
   // 如果有上次的错误，添加错误反馈
