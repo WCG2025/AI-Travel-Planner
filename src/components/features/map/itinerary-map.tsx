@@ -39,6 +39,7 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
   const [markers, setMarkers] = useState<any[]>([]);
   const [polylines, setPolylines] = useState<any[]>([]);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number>(0); // 0 = 全部，1,2,3... = 具体天数
 
   // 调试信息
   console.log('🗺️ ItineraryMap 渲染:', {
@@ -71,15 +72,23 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
     setError(null);
 
     try {
-      // 收集所有需要地理编码的活动
+      // 收集需要显示的活动（根据筛选的天数）
       const activities: Activity[] = [];
-      plan.itinerary.forEach((day: ItineraryDay) => {
-        day.activities.forEach((activity: Activity) => {
-          if (activity.location) {
-            activities.push(activity);
-          }
-        });
+      const activityDayMap: Map<number, number> = new Map(); // 记录每个活动属于第几天
+      
+      plan.itinerary.forEach((day: ItineraryDay, dayIndex: number) => {
+        // 如果选择了"全部"(0) 或 当前天，则添加活动
+        if (selectedDay === 0 || selectedDay === day.day) {
+          day.activities.forEach((activity: Activity) => {
+            if (activity.location) {
+              activityDayMap.set(activities.length, day.day); // 记录这个活动属于第几天
+              activities.push(activity);
+            }
+          });
+        }
       });
+      
+      console.log(`📅 筛选第${selectedDay === 0 ? '全部' : selectedDay}天，共 ${activities.length} 个景点`);
 
       if (activities.length === 0) {
         setError('行程中没有地点信息');
@@ -162,9 +171,10 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
         }
 
         const activity = activities[index];
+        const activityDay = activityDayMap.get(index) || 1; // 获取这个活动属于第几天
 
         try {
-          console.log(`   → 准备创建标记: "${activity.title}" at [${coordinate.lng}, ${coordinate.lat}]`);
+          console.log(`   → 准备创建标记: "${activity.title}" at [${coordinate.lng}, ${coordinate.lat}], 第${activityDay}天`);
           
           // 创建标记前最后验证（在 push 之前）
           if (!coordinate.lng || !coordinate.lat || isNaN(coordinate.lng) || isNaN(coordinate.lat)) {
@@ -175,16 +185,21 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
           // 只有完全验证通过，才加入 validCoordinates
           validCoordinates.push(coordinate);
           
-          // 创建标记，使用默认图标（更稳定）
+          // 根据天数选择颜色
+          const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
+          const markerColor = colors[(activityDay - 1) % colors.length];
+          
+          // 创建带颜色的标记
           const marker = new amap.Marker({
             position: new amap.LngLat(coordinate.lng, coordinate.lat),
             title: activity.title,
             label: {
-              content: activity.title,
-              offset: new amap.Pixel(0, -30),
+              content: `<div style="background: ${markerColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${activity.title}</div>`,
+              offset: new amap.Pixel(0, -35),
               direction: 'top',
             },
-            // 使用默认红点图标，不自定义（避免图标加载问题）
+            // 使用简单的彩色圆点
+            icon: `https://webapi.amap.com/theme/v1.3/markers/n/mark_b${activityDay}.png`, // 使用高德官方彩色图标
             zIndex: 100,
           });
 
@@ -288,12 +303,19 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
         }
       }
 
-      // 绘制每天内景点之间的连线
+      // 绘制每天内景点之间的连线（只绘制选中的天）
       console.log('🔗 开始绘制每天内的景点连线...');
       const newPolylines: any[] = [];  // 重命名以避免与 state 冲突
       let globalIndex = 0; // 全局景点索引
       
       plan.itinerary.forEach((day: ItineraryDay, dayIndex: number) => {
+        // 如果筛选了特定天数，只绘制该天的连线
+        if (selectedDay !== 0 && selectedDay !== day.day) {
+          const dayActivities = day.activities.filter(a => a.location);
+          globalIndex += dayActivities.length;
+          return; // 跳过不显示的天
+        }
+        
         const dayActivities = day.activities.filter(a => a.location);
         const dayCoordinates: Coordinate[] = [];
         
@@ -455,25 +477,45 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
         )}
 
 
-        {/* 图例 */}
-        {markers.length > 0 && !loading && (
-          <div className="absolute top-4 right-4 z-10">
+        {/* 天数筛选器 */}
+        {!loading && markers.length > 0 && (
+          <div className="absolute top-4 left-4 z-10">
             <Card>
               <CardContent className="p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Info className="h-4 w-4" />
-                  <span className="text-sm font-medium">图例</span>
+                  <span className="text-sm font-medium">选择天数</span>
                 </div>
-                <div className="space-y-1">
-                  {Object.entries(ACTIVITY_COLORS).map(([type, color]) => (
-                    <div key={type} className="flex items-center gap-2 text-xs">
-                      <div 
-                        className="w-3 h-3 rounded-full border-2 border-white"
-                        style={{ backgroundColor: color }}
-                      />
-                      <span className="capitalize">{type}</span>
-                    </div>
-                  ))}
+                <div className="flex flex-wrap gap-1">
+                  <button
+                    onClick={() => setSelectedDay(0)}
+                    className={`px-3 py-1 text-xs rounded ${
+                      selectedDay === 0
+                        ? 'bg-primary text-white'
+                        : 'bg-gray-100 hover:bg-gray-200'
+                    }`}
+                  >
+                    全部
+                  </button>
+                  {plan.itinerary.map((day: ItineraryDay) => {
+                    const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
+                    const dayColor = colors[(day.day - 1) % colors.length];
+                    
+                    return (
+                      <button
+                        key={day.day}
+                        onClick={() => setSelectedDay(day.day)}
+                        className={`px-3 py-1 text-xs rounded font-medium ${
+                          selectedDay === day.day
+                            ? 'text-white'
+                            : 'bg-gray-100 hover:bg-gray-200'
+                        }`}
+                        style={selectedDay === day.day ? { backgroundColor: dayColor } : {}}
+                      >
+                        第{day.day}天
+                      </button>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
