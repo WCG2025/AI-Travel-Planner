@@ -2,6 +2,9 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { PlanManager } from '@/components/features/travel-plan/plan-manager';
 
+// 强制动态渲染，不在构建时预渲染
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {
