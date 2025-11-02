@@ -303,108 +303,61 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
         }
       }
 
-      // 绘制每天内景点之间的连线（只绘制选中的天）
+      // 绘制每天内景点之间的连线
       console.log('🔗 开始绘制每天内的景点连线...');
-      const newPolylines: any[] = [];  // 重命名以避免与 state 冲突
-      let globalIndex = 0; // 全局景点索引
+      const newPolylines: any[] = [];
       
-      plan.itinerary.forEach((day: ItineraryDay, dayIndex: number) => {
-        // 如果筛选了特定天数，只绘制该天的连线
-        if (selectedDay !== 0 && selectedDay !== day.day) {
+      // 当筛选特定天时，coordinates 数组只包含该天的景点
+      // 所以直接使用 coordinates 数组即可，不需要 globalIndex
+      if (selectedDay === 0) {
+        // 查看全部天：需要按天分组
+        let globalIndex = 0;
+        
+        plan.itinerary.forEach((day: ItineraryDay, dayIndex: number) => {
           const dayActivities = day.activities.filter(a => a.location);
+          const dayCoordinates: Coordinate[] = [];
+          
+          // 收集这一天的有效坐标
+          for (let i = 0; i < dayActivities.length; i++) {
+            const coord = coordinates[globalIndex + i];
+            if (coord && 
+                typeof coord.lng === 'number' && 
+                typeof coord.lat === 'number' &&
+                !isNaN(coord.lng) && 
+                !isNaN(coord.lat)) {
+              dayCoordinates.push(coord);
+            }
+          }
+          
           globalIndex += dayActivities.length;
-          return; // 跳过不显示的天
-        }
-        
-        const dayActivities = day.activities.filter(a => a.location);
-        const dayCoordinates: Coordinate[] = [];
-        
-        // 收集这一天的有效坐标
-        for (let i = 0; i < dayActivities.length; i++) {
-          const coord = coordinates[globalIndex + i];
-          if (coord && 
-              typeof coord.lng === 'number' && 
-              typeof coord.lat === 'number' &&
-              !isNaN(coord.lng) && 
-              !isNaN(coord.lat)) {
-            dayCoordinates.push(coord);
+          
+          // 绘制这一天的连线
+          if (dayCoordinates.length >= 2) {
+            const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
+            const color = colors[(day.day - 1) % colors.length];
+            
+            drawDayPolyline(dayCoordinates, color, day.day, newPolylines);
+            console.log(`✅ 第${day.day}天: 连接 ${dayCoordinates.length} 个景点，颜色: ${color}`);
           }
-        }
+        });
+      } else {
+        // 查看单独某一天：coordinates 数组就是该天的所有坐标
+        const dayCoordinates = coordinates.filter(coord => 
+          coord && 
+          typeof coord.lng === 'number' && 
+          typeof coord.lat === 'number' &&
+          !isNaN(coord.lng) && 
+          !isNaN(coord.lat)
+        );
         
-        globalIndex += dayActivities.length;
-        
-        // 如果这一天有至少2个有效坐标，绘制连线
         if (dayCoordinates.length >= 2) {
-          const path = dayCoordinates.map(coord => [coord.lng, coord.lat]);
-          
-          // 为每天使用不同颜色
           const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
-          const color = colors[dayIndex % colors.length];
+          const color = colors[(selectedDay - 1) % colors.length];
           
-          const polyline = new amap.Polyline({
-            path: path,
-            strokeColor: color,
-            strokeWeight: 3,
-            strokeOpacity: 0.7,
-            strokeStyle: 'solid',
-            lineJoin: 'round',
-            lineCap: 'round',
-            showDir: true,  // 显示方向箭头
-          });
-          
-          polyline.setMap(map);
-          newPolylines.push(polyline);
-          
-          // 手动添加箭头标记（如果内置箭头不显示）
-          // 在线段中点添加箭头
-          for (let i = 0; i < dayCoordinates.length - 1; i++) {
-            const start = dayCoordinates[i];
-            const end = dayCoordinates[i + 1];
-            
-            // 计算中点
-            const midLng = (start.lng + end.lng) / 2;
-            const midLat = (start.lat + end.lat) / 2;
-            
-            // 计算角度：从起点到终点的方向
-            // Math.atan2 返回逆时针角度，AMap.Marker.angle 需要顺时针角度
-            const mathAngle = Math.atan2(end.lat - start.lat, end.lng - start.lng) * 180 / Math.PI;
-            const angle = -mathAngle;  // 取反：逆时针 → 顺时针
-            
-            console.log(`   箭头 ${i+1}: (${start.lng.toFixed(4)}, ${start.lat.toFixed(4)}) → (${end.lng.toFixed(4)}, ${end.lat.toFixed(4)}), 角度: ${angle.toFixed(1)}°`);
-            
-            // 创建箭头SVG
-            const arrowSvg = `
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
-                <path d="M 5 10 L 15 10 M 11 6 L 15 10 L 11 14" 
-                      fill="none" 
-                      stroke="${color}" 
-                      stroke-width="2" 
-                      stroke-linecap="round" 
-                      stroke-linejoin="round"/>
-              </svg>
-            `;
-            const arrowIcon = `data:image/svg+xml;base64,${btoa(arrowSvg)}`;
-            
-            // 创建箭头标记
-            const arrowMarker = new amap.Marker({
-              position: new amap.LngLat(midLng, midLat),
-              icon: new amap.Icon({
-                size: new amap.Size(20, 20),
-                image: arrowIcon,
-                imageSize: new amap.Size(20, 20),
-              }),
-              angle: angle,
-              offset: new amap.Pixel(-10, -10),
-              zIndex: 50,
-            });
-            
-            arrowMarker.setMap(map);
-            newPolylines.push(arrowMarker); // 存储以便清理
-          }
-          
-          console.log(`✅ 第${dayIndex + 1}天: 连接 ${dayCoordinates.length} 个景点，颜色: ${color}`);
+          drawDayPolyline(dayCoordinates, color, selectedDay, newPolylines, amap, map);
+          console.log(`✅ 第${selectedDay}天: 连接 ${dayCoordinates.length} 个景点，颜色: ${color}`);
         }
-      });
+      }
       
       console.log(`✅ 总共绘制 ${newPolylines.length} 条连线`);
       setPolylines(newPolylines);
@@ -417,6 +370,74 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
       console.error('❌ 加载行程数据失败:', error);
       setError(error.message || '加载地图数据失败');
       setLoading(false);
+    }
+  };
+
+  // 绘制一天的连线和箭头
+  const drawDayPolyline = (
+    dayCoordinates: Coordinate[],
+    color: string,
+    dayNumber: number,
+    polylinesArray: any[],
+    amap: any,
+    map: any
+  ) => {
+    const path = dayCoordinates.map(coord => [coord.lng, coord.lat]);
+    
+    // 绘制连线
+    const polyline = new amap.Polyline({
+      path: path,
+      strokeColor: color,
+      strokeWeight: 3,
+      strokeOpacity: 0.7,
+      strokeStyle: 'solid',
+      lineJoin: 'round',
+      lineCap: 'round',
+      showDir: true,
+    });
+    
+    polyline.setMap(map);
+    polylinesArray.push(polyline);
+    
+    // 添加方向箭头
+    for (let i = 0; i < dayCoordinates.length - 1; i++) {
+      const start = dayCoordinates[i];
+      const end = dayCoordinates[i + 1];
+      
+      const midLng = (start.lng + end.lng) / 2;
+      const midLat = (start.lat + end.lat) / 2;
+      
+      const mathAngle = Math.atan2(end.lat - start.lat, end.lng - start.lng) * 180 / Math.PI;
+      const angle = -mathAngle;
+      
+      console.log(`   箭头 ${i+1}: 第${dayNumber}天, 角度: ${angle.toFixed(1)}°`);
+      
+      const arrowSvg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+          <path d="M 5 10 L 15 10 M 11 6 L 15 10 L 11 14" 
+                fill="none" 
+                stroke="${color}" 
+                stroke-width="2" 
+                stroke-linecap="round" 
+                stroke-linejoin="round"/>
+        </svg>
+      `;
+      const arrowIcon = `data:image/svg+xml;base64,${btoa(arrowSvg)}`;
+      
+      const arrowMarker = new amap.Marker({
+        position: new amap.LngLat(midLng, midLat),
+        icon: new amap.Icon({
+          size: new amap.Size(20, 20),
+          image: arrowIcon,
+          imageSize: new amap.Size(20, 20),
+        }),
+        angle: angle,
+        offset: new amap.Pixel(-10, -10),
+        zIndex: 50,
+      });
+      
+      arrowMarker.setMap(map);
+      polylinesArray.push(arrowMarker);
     }
   };
 
