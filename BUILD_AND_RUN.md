@@ -134,6 +134,11 @@ Loaded image: ai-travel-planner:latest
 - 无需额外配置 `NEXT_PUBLIC_` 前缀的环境变量
 - 只需配置服务端环境变量（见步骤 3）
 
+**💡 如需使用自己的账号**：
+- 如果您想使用自己的 Supabase/科大讯飞/高德地图账号
+- 请参考本文档末尾的「附录：重新构建镜像」章节
+- 需要重新构建镜像以注入您的 API Keys
+
 ---
 
 #### 步骤 2：验证镜像
@@ -546,6 +551,307 @@ docker port ai-travel-planner
 - [ ] 首页加载 < 3秒
 - [ ] AI 生成行程 < 1分钟
 - [ ] 地图加载 < 10秒
+
+---
+
+## 📌 附录：使用自己的 API Keys 重新构建镜像
+
+### 💡 为什么需要重新构建？
+
+本项目使用的客户端环境变量（`NEXT_PUBLIC_*` 前缀）必须在**构建时**打包进镜像，包括：
+- Supabase（数据库）
+- 科大讯飞（语音识别）
+- 高德地图（地图显示）
+
+如果您想使用自己的账号，需要重新构建镜像以注入您的 API Keys。
+
+---
+
+### 方法 1：使用 docker-compose（推荐）
+
+#### 步骤 1：获取项目源码
+
+```bash
+# 从 GitHub 克隆项目
+git clone https://github.com/WCG2025/AI-Travel-Planner.git
+cd AI-Travel-Planner
+```
+
+#### 步骤 2：修改构建配置
+
+编辑 `docker-compose.build.yml` 文件，将其中的 API Keys 替换为您自己的：
+
+```yaml
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # 替换为您的 Supabase 配置
+        NEXT_PUBLIC_SUPABASE_URL: "https://your-project.supabase.co"
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "your_supabase_anon_key"
+        
+        # 替换为您的科大讯飞配置
+        NEXT_PUBLIC_XFYUN_APP_ID: "your_xfyun_app_id"
+        NEXT_PUBLIC_XFYUN_API_KEY: "your_xfyun_api_key"
+        NEXT_PUBLIC_XFYUN_API_SECRET: "your_xfyun_api_secret"
+        
+        # 替换为您的高德地图配置
+        NEXT_PUBLIC_AMAP_KEY: "your_amap_js_api_key"
+        NEXT_PUBLIC_AMAP_SECRET: "your_amap_secret"
+    
+    environment:
+      # 替换为您的服务端 API Keys
+      - DEEPSEEK_API_KEY=your_deepseek_api_key
+      - AMAP_WEB_SERVICE_KEY=your_amap_web_service_key
+```
+
+#### 步骤 3：构建和运行
+
+```bash
+# 构建镜像并启动容器
+docker-compose -f docker-compose.build.yml up -d --build
+
+# 查看日志
+docker-compose -f docker-compose.build.yml logs -f
+```
+
+#### 步骤 4：访问应用
+
+打开浏览器访问：http://localhost:3000
+
+---
+
+### 方法 2：使用 PowerShell 脚本（Windows）
+
+#### 步骤 1：准备环境变量
+
+创建或编辑 `.env.local` 文件，填入您的 API Keys：
+
+```env
+# Supabase 配置
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# DeepSeek API
+DEEPSEEK_API_KEY=your_deepseek_api_key
+
+# 科大讯飞语音识别
+NEXT_PUBLIC_XFYUN_APP_ID=your_xfyun_app_id
+NEXT_PUBLIC_XFYUN_API_KEY=your_xfyun_api_key
+NEXT_PUBLIC_XFYUN_API_SECRET=your_xfyun_api_secret
+
+# 高德地图
+NEXT_PUBLIC_AMAP_KEY=your_amap_js_api_key
+NEXT_PUBLIC_AMAP_SECRET=your_amap_secret
+AMAP_WEB_SERVICE_KEY=your_amap_web_service_key
+```
+
+#### 步骤 2：运行构建脚本
+
+```powershell
+# 使用提供的构建脚本
+.\build-simple.ps1
+```
+
+脚本会自动：
+1. 读取 `.env.local` 中的环境变量
+2. 使用 `--build-arg` 构建镜像
+3. 显示构建结果
+
+#### 步骤 3：运行容器
+
+```powershell
+docker run -d --name ai-travel-planner -p 3000:3000 `
+  -e DEEPSEEK_API_KEY="your_deepseek_api_key" `
+  -e AMAP_WEB_SERVICE_KEY="your_amap_web_service_key" `
+  ai-travel-planner:latest
+```
+
+---
+
+### 方法 3：手动构建（最灵活）
+
+#### 完整构建命令
+
+```bash
+docker build \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co" \
+  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="your_supabase_anon_key" \
+  --build-arg NEXT_PUBLIC_XFYUN_APP_ID="your_xfyun_app_id" \
+  --build-arg NEXT_PUBLIC_XFYUN_API_KEY="your_xfyun_api_key" \
+  --build-arg NEXT_PUBLIC_XFYUN_API_SECRET="your_xfyun_api_secret" \
+  --build-arg NEXT_PUBLIC_AMAP_KEY="your_amap_js_api_key" \
+  --build-arg NEXT_PUBLIC_AMAP_SECRET="your_amap_secret" \
+  -t ai-travel-planner:latest .
+```
+
+**Windows PowerShell 格式**：
+
+```powershell
+docker build `
+  --build-arg NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co" `
+  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="your_supabase_anon_key" `
+  --build-arg NEXT_PUBLIC_XFYUN_APP_ID="your_xfyun_app_id" `
+  --build-arg NEXT_PUBLIC_XFYUN_API_KEY="your_xfyun_api_key" `
+  --build-arg NEXT_PUBLIC_XFYUN_API_SECRET="your_xfyun_api_secret" `
+  --build-arg NEXT_PUBLIC_AMAP_KEY="your_amap_js_api_key" `
+  --build-arg NEXT_PUBLIC_AMAP_SECRET="your_amap_secret" `
+  -t ai-travel-planner:latest .
+```
+
+---
+
+### 📋 API Keys 获取指南
+
+#### 1. Supabase（数据库）
+
+**申请地址**：https://supabase.com/
+
+**步骤**：
+1. 注册并创建项目
+2. 进入项目设置 → API
+3. 复制 `URL` 和 `anon public` key
+
+**免费额度**：500MB 数据库
+
+---
+
+#### 2. DeepSeek（AI）
+
+**申请地址**：https://platform.deepseek.com/
+
+**步骤**：
+1. 注册账号
+2. 创建 API Key
+3. 复制 Key（格式：`sk-xxxxx`）
+
+**免费额度**：新用户有免费 Token
+
+---
+
+#### 3. 科大讯飞（语音识别）
+
+**申请地址**：https://console.xfyun.cn/
+
+**步骤**：
+1. 注册并创建应用
+2. 选择服务：**语音听写（流式版）WebAPI**
+3. 获取三个值：
+   - App ID
+   - API Key
+   - API Secret
+
+**免费额度**：500万字符/年
+
+---
+
+#### 4. 高德地图
+
+**申请地址**：https://console.amap.com/
+
+**步骤**：
+1. 注册并创建应用
+2. **添加两个不同类型的 Key**：
+
+   **Key 1 - Web端（JS API）**：
+   - 用途：地图显示、标记、路线绘制
+   - 对应变量：`NEXT_PUBLIC_AMAP_KEY`
+   
+   **Key 2 - Web服务**：
+   - 用途：服务端地理编码（地址→坐标）
+   - 对应变量：`AMAP_WEB_SERVICE_KEY`
+
+3. 可选：安全密钥（`NEXT_PUBLIC_AMAP_SECRET`）
+
+**免费额度**：
+- JS API：不限量
+- Web服务：30万次/天（个人认证）
+
+---
+
+### ⚠️ 重要提示
+
+#### 1. 环境变量类型说明
+
+| 变量类型 | 何时需要 | 如何提供 | 能否运行时更改 |
+|---------|---------|---------|--------------|
+| `NEXT_PUBLIC_*` | 构建时 | `--build-arg` | ❌ 不能，已打包进代码 |
+| 其他（服务端） | 运行时 | `-e` / `--env-file` | ✅ 可以 |
+
+#### 2. 为什么客户端变量要在构建时提供？
+
+Next.js 会在构建时将 `NEXT_PUBLIC_*` 环境变量的值**静态替换**到客户端 JavaScript 代码中。
+
+**构建前**：
+```typescript
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+```
+
+**构建后（浏览器中的代码）**：
+```javascript
+const url = "https://your-project.supabase.co";
+```
+
+所以如果构建时没有提供这些变量，浏览器中就会是 `undefined`，导致应用无法工作。
+
+#### 3. 安全性说明
+
+- `NEXT_PUBLIC_*` 变量会暴露给浏览器（这是正常的）
+- 服务端变量（如 `DEEPSEEK_API_KEY`）不会暴露
+- 所有 API 都应配置访问限制和额度控制
+
+---
+
+### 🧪 验证新镜像
+
+构建完成后，验证配置是否正确：
+
+```bash
+# 1. 启动容器
+docker run -d --name test-app -p 3000:3000 ai-travel-planner:latest
+
+# 2. 访问配置 API
+curl http://localhost:3000/api/config
+
+# 3. 检查返回的配置是否是您的 API Keys
+# 应该看到您自己的 Supabase URL、科大讯飞 App ID 等
+
+# 4. 清理测试容器
+docker stop test-app && docker rm test-app
+```
+
+---
+
+### 📦 导出新镜像
+
+如果需要导出镜像文件给他人使用：
+
+```bash
+# 导出镜像
+docker save -o my-travel-planner.tar ai-travel-planner:latest
+
+# 可选：压缩
+gzip my-travel-planner.tar
+# 或使用 7-Zip 等工具压缩
+```
+
+---
+
+### 💡 小提示
+
+1. **测试账号 vs 正式账号**：
+   - 可以先用测试账号构建镜像进行测试
+   - 确认功能正常后再用正式账号重新构建
+
+2. **版本管理**：
+   - 建议为不同配置的镜像打上不同标签
+   - 例如：`ai-travel-planner:test` 和 `ai-travel-planner:prod`
+
+3. **CI/CD 集成**：
+   - 可以使用 GitHub Actions 自动构建
+   - 参考项目中的 `.github/workflows/docker-build.yml`
 
 ---
 
