@@ -233,8 +233,11 @@ export function ExpenseForm({ planId, onSubmit, loading = false, initialValues }
                       step="0.01"
                       placeholder="0.00"
                       {...field}
-                      value={field.value ?? ''}
-                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                      value={field.value !== undefined && !isNaN(field.value) ? field.value : ''}
+                      onChange={(e) => {
+                        const value = e.target.valueAsNumber;
+                        field.onChange(isNaN(value) ? undefined : value);
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
