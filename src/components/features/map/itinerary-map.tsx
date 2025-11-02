@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { MapContainer } from './map-container';
 import { batchGeocode } from '@/lib/map/geocoding';
 import { Loader2, MapPin, Info } from 'lucide-react';
@@ -40,6 +40,17 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
   const [polylines, setPolylines] = useState<any[]>([]);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [selectedDay, setSelectedDay] = useState<number>(0); // 0 = 全部，1,2,3... = 具体天数
+  
+  // 组件挂载状态跟踪
+  const isMountedRef = useRef(true);
+  
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      console.log('🗺️ ItineraryMap 组件已卸载，取消所有操作');
+    };
+  }, []);
 
   // 调试信息
   console.log('🗺️ ItineraryMap 渲染:', {
@@ -67,6 +78,12 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
   // 加载行程数据
   const loadItineraryData = async () => {
     if (!map || !amap) return;
+    
+    // 检查组件是否已卸载
+    if (!isMountedRef.current) {
+      console.log('⏹️ 组件已卸载，跳过加载');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -136,6 +153,12 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
       console.log(`✅ 地理编码完成: ${successCount}/${activities.length} 个景点成功 (耗时 ${duration}秒)`);
 
+      // 再次检查组件是否已卸载
+      if (!isMountedRef.current) {
+        console.log('⏹️ 组件已卸载，停止处理');
+        return;
+      }
+
       if (successCount === 0) {
         setError('无法获取任何景点的位置信息');
         setLoading(false);
@@ -174,6 +197,9 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
         const activityDay = activityDayMap.get(index) || 1; // 获取这个活动属于第几天
 
         try {
+          // 检查组件是否已卸载
+          if (!isMountedRef.current) return;
+          
           console.log(`   → 准备创建标记: "${activity.title}" at [${coordinate.lng}, ${coordinate.lat}], 第${activityDay}天`);
           
           // 创建标记前最后验证（在 push 之前）
@@ -226,7 +252,10 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
           
           console.log(`✅ 创建标记: "${activity.title}" (${coordinate.lng.toFixed(6)}, ${coordinate.lat.toFixed(6)})`);
         } catch (error: any) {
-          console.error(`❌ 创建标记失败: "${activity.title}"`, error.message);
+          // 只有组件仍挂载时才报错
+          if (isMountedRef.current) {
+            console.error(`❌ 创建标记失败: "${activity.title}"`, error.message);
+          }
         }
       });
 
@@ -295,10 +324,13 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
             map.setZoomAndCenter(zoom, new amap.LngLat(centerLng, centerLat));
           }
         } catch (error: any) {
-          console.error('❌ 设置地图边界失败:', error);
-          // 使用默认中心点
-          if (validCoordinates[0]) {
-            map.setZoomAndCenter(12, [validCoordinates[0].lng, validCoordinates[0].lat]);
+          // 只有组件仍挂载时才报错
+          if (isMountedRef.current) {
+            console.error('❌ 设置地图边界失败:', error);
+            // 使用默认中心点
+            if (validCoordinates[0]) {
+              map.setZoomAndCenter(12, [validCoordinates[0].lng, validCoordinates[0].lat]);
+            }
           }
         }
       }
@@ -367,9 +399,14 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
       setLoading(false);
 
     } catch (error: any) {
-      console.error('❌ 加载行程数据失败:', error);
-      setError(error.message || '加载地图数据失败');
-      setLoading(false);
+      // 只有组件仍挂载时才报错和设置错误状态
+      if (isMountedRef.current) {
+        console.error('❌ 加载行程数据失败:', error);
+        setError(error.message || '加载地图数据失败');
+        setLoading(false);
+      } else {
+        console.log('⏹️ 组件已卸载，忽略错误:', error.message);
+      }
     }
   };
 
