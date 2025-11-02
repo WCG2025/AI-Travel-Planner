@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # 从 .env.local 读取的环境变量
+        NEXT_PUBLIC_SUPABASE_URL: "https://cyxwcrxrmonevvvafaet.supabase.co"
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5eHdjcnhybW9uZXZ2dmFmYWV0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyMDI2NTAsImV4cCI6MjA3Njc3ODY1MH0.uOsrfc1Z9uZ5EYT3DLTjVKCazFILemh7xSWJx9calk8"
+        NEXT_PUBLIC_XFYUN_APP_ID: "850876d4"
+        NEXT_PUBLIC_XFYUN_API_KEY: "81c297deba83bc8ef7c22073bca93aec"
+        NEXT_PUBLIC_XFYUN_API_SECRET: "NTNmYmJjZDVkOTJiMWM4YzVlYzZiMDRh"
+        NEXT_PUBLIC_AMAP_KEY: "1e25b66013ee7ab6ac4de0b6c81940d6"
+        NEXT_PUBLIC_AMAP_SECRET: "31892577c1335fcb8d12648c8af2aff9"
+    
+    image: ai-travel-planner:fixed
+    container_name: ai-travel-planner
+    ports:
+      - "3000:3000"
+    
+    environment:
+      # 运行时环境变量（服务端使用）
+      - DEEPSEEK_API_KEY=sk-969745a2242c498f9a6c459634f0389a
+      - AMAP_WEB_SERVICE_KEY=24c835245683a29acd0559fd571a5267
+      - NODE_ENV=production
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# 可选：添加网络配置
+networks:
+  default:
+    name: ai-travel-planner-network

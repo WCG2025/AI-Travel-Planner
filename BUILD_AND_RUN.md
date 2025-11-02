@@ -129,6 +129,11 @@ gunzip -c ai-travel-planner-docker-image.tar.gz | docker load
 Loaded image: ai-travel-planner:latest
 ```
 
+**⚠️ 重要说明**：
+- 本镜像已在构建时包含所有必需的环境变量
+- 无需额外配置 `NEXT_PUBLIC_` 前缀的环境变量
+- 只需配置服务端环境变量（见步骤 3）
+
 ---
 
 #### 步骤 2：验证镜像
@@ -150,27 +155,24 @@ ai-travel-planner     latest    xxx            150MB
 **创建 `.env` 文件**（与 docker-compose.yml 同目录）：
 
 ```env
-# Supabase 配置（必需）
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-
-# DeepSeek API（必需）
+# 服务端环境变量（必需）
 DEEPSEEK_API_KEY=your_deepseek_key
-
-# 科大讯飞（必需）
-NEXT_PUBLIC_XFYUN_APP_ID=your_app_id
-NEXT_PUBLIC_XFYUN_API_KEY=your_api_key
-NEXT_PUBLIC_XFYUN_API_SECRET=your_api_secret
-
-# 高德地图（必需 - 需要两个不同的Key）
-NEXT_PUBLIC_AMAP_KEY=your_js_api_key
 AMAP_WEB_SERVICE_KEY=your_web_service_key
+
+# 可选：如果需要覆盖内置配置
+# NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 ```
 
+**📝 说明**：
+- **客户端环境变量**（`NEXT_PUBLIC_*`）已内置在镜像中
+- **服务端环境变量**需要在运行时提供
+- 如需使用不同的 Supabase 项目，可以覆盖内置配置
+
 **⚠️ 重要**：
-- 所有 API Key 都必须填写
+- `DEEPSEEK_API_KEY` 和 `AMAP_WEB_SERVICE_KEY` 必须填写
 - 请使用您自己申请的免费 API Key
-- 详细申请步骤见 `env.example` 文件中的注释
+- 详细申请步骤见下文"API Keys 申请指南"
 
 ---
 
