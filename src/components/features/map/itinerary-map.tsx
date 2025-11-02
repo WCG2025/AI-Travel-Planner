@@ -336,7 +336,7 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
             const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6'];
             const color = colors[(day.day - 1) % colors.length];
             
-            drawDayPolyline(dayCoordinates, color, day.day, newPolylines);
+            drawDayPolyline(dayCoordinates, color, day.day, newPolylines, amap, map);
             console.log(`✅ 第${day.day}天: 连接 ${dayCoordinates.length} 个景点，颜色: ${color}`);
           }
         });
