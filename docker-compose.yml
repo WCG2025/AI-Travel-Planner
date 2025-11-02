@@ -2,30 +2,10 @@ version: '3.8'
 
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ai-travel-planner:latest
+    container_name: ai-travel-planner
     ports:
       - "3000:3000"
-    environment:
-      # Supabase
-      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-      # DeepSeek API
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
-      - NEXT_PUBLIC_DEEPSEEK_API_ENDPOINT=${NEXT_PUBLIC_DEEPSEEK_API_ENDPOINT}
-      # 科大讯飞
-      - NEXT_PUBLIC_XFYUN_APP_ID=${NEXT_PUBLIC_XFYUN_APP_ID}
-      - NEXT_PUBLIC_XFYUN_API_KEY=${NEXT_PUBLIC_XFYUN_API_KEY}
-      - NEXT_PUBLIC_XFYUN_API_SECRET=${NEXT_PUBLIC_XFYUN_API_SECRET}
-      # 高德地图
-      - NEXT_PUBLIC_AMAP_KEY=${NEXT_PUBLIC_AMAP_KEY}
-      - NEXT_PUBLIC_AMAP_SECRET=${NEXT_PUBLIC_AMAP_SECRET}
+    env_file:
+      - .env
     restart: unless-stopped
-    networks:
-      - app-network
-
-networks:
-  app-network:
-    driver: bridge
-

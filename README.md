@@ -291,9 +291,9 @@ docker logs ai-travel-planner  # 查看日志
 如果您想使用自己的 API Keys 重新构建镜像：
 
 ```bash
-# 1. 编辑 docker-compose.build.local.yml
+# 1. 编辑 docker-compose.build.yml
 # 2. 重新构建
-docker-compose -f docker-compose.build.local.yml up -d --build
+docker-compose -f docker-compose.build.yml up -d --build
 # 3. 导出新镜像
 docker save -o my-image.tar ai-travel-planner:latest
 ```
@@ -304,10 +304,10 @@ docker save -o my-image.tar ai-travel-planner:latest
 
 ### 第一阶段：项目基础架构（Week 1）
 - [x] 项目初始化与 Next.js 脚手架搭建
-- [ ] Tailwind CSS 与 UI 组件库配置
-- [ ] 项目目录结构规划
-- [ ] ESLint、Prettier 代码规范配置
-- [ ] Git 工作流与分支策略制定
+- [x] Tailwind CSS 与 UI 组件库配置
+- [x] 项目目录结构规划
+- [x] ESLint、Prettier 代码规范配置
+- [x] Git 工作流与分支策略制定
 
 ### 第二阶段：用户认证系统 ✅
 - [x] Supabase 项目创建与数据库设计
@@ -349,12 +349,12 @@ docker save -o my-image.tar ai-travel-planner:latest
 - [x] 服务端地理编码（准确可靠）
 
 ### 第七阶段：UI/UX 优化与完善（进行中）
-- [ ] 响应式设计全面适配
-- [ ] 加载状态与骨架屏优化
-- [ ] 动画与过渡效果
-- [ ] 深色模式支持
-- [ ] 无障碍访问优化
-- [ ] 用户引导与帮助提示
+- [x] 响应式设计全面适配
+- [x] 加载状态与骨架屏优化
+- [x] 动画与过渡效果
+- [x] 深色模式支持
+- [x] 无障碍访问优化
+- [x] 用户引导与帮助提示
 
 ### 第八阶段：Docker 化与部署 ✅
 - [x] Dockerfile 编写
