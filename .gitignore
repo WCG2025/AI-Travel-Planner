@@ -37,6 +37,11 @@ yarn-error.log*
 # docker local build config with real API keys
 docker-compose.build.local.yml
 
+# docker image files (too large for git)
+*.tar
+*.tar.gz
+ai-travel-planner-docker-image.*
+
 # vercel
 .vercel
 

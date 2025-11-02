@@ -132,63 +132,173 @@ npm run build
 npm run start
 ```
 
-## 🐳 Docker 部署
+## 🐳 Docker 部署（验收人员请看这里）
 
-本项目提供完整的 Docker 容器化部署方案，适合快速部署和作业提交。
+### ⚡ 5分钟快速开始
 
-### 快速开始
+本项目提供已打包好的 Docker 镜像，开箱即用。
 
-#### 方法 1：使用预构建镜像（推荐给评审老师）
+#### 前置要求
 
-如果您收到了 `ai-travel-planner-docker-image.tar` 文件：
+- ✅ 安装 Docker Desktop: https://www.docker.com/products/docker-desktop/
+- ✅ 确保 Docker 正在运行
+
+#### 步骤 1：导入镜像
 
 ```bash
-# 1. 导入镜像
 docker load -i ai-travel-planner-docker-image.tar
-
-# 2. 创建 .env 文件
-cat > .env << EOF
-DEEPSEEK_API_KEY=your_deepseek_key
-AMAP_WEB_SERVICE_KEY=your_amap_web_service_key
-EOF
-
-# 3. 启动应用
-docker-compose up -d
-
-# 4. 访问应用
-# http://localhost:3000
 ```
 
-#### 方法 2：从源码构建
+**预计时间**：30秒
 
-如果您想使用自己的 API Keys 构建镜像：
+#### 步骤 2：创建环境变量文件
+
+在镜像文件同目录创建 `.env` 文件：
+
+```env
+DEEPSEEK_API_KEY=your_deepseek_api_key
+AMAP_WEB_SERVICE_KEY=your_amap_web_service_key
+```
+
+**说明**：
+- 这两个 API Key 需自行申请（免费）
+- 其他所有配置已内置在镜像中
+- 详细申请步骤见下文
+
+#### 步骤 3：启动应用
+
+**方法 A - 使用 docker run**（简单直接）：
 
 ```bash
-# 1. 编辑 docker-compose.build.yml（替换为您的 API Keys）
-
-# 2. 构建并启动
-docker-compose -f docker-compose.build.yml up -d --build
-
-# 3. 访问应用
-# http://localhost:3000
+docker run -d --name ai-travel-planner -p 3000:3000 \
+  -e DEEPSEEK_API_KEY=your_deepseek_api_key \
+  -e AMAP_WEB_SERVICE_KEY=your_amap_web_service_key \
+  ai-travel-planner:latest
 ```
 
-### 详细文档
+**Windows PowerShell**：
+```powershell
+docker run -d --name ai-travel-planner -p 3000:3000 `
+  -e DEEPSEEK_API_KEY=your_deepseek_api_key `
+  -e AMAP_WEB_SERVICE_KEY=your_amap_web_service_key `
+  ai-travel-planner:latest
+```
 
+**方法 B - 使用 docker-compose**（推荐）：
+
+创建 `docker-compose.yml`：
+```yaml
+version: '3.8'
+services:
+  app:
+    image: ai-travel-planner:latest
+    container_name: ai-travel-planner
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    restart: unless-stopped
+```
+
+启动：
+```bash
+docker-compose up -d
+```
+
+#### 步骤 4：访问应用
+
+打开浏览器：**http://localhost:3000**
+
+---
+
+### 🔑 API Keys 快速申请
+
+#### 1. DeepSeek（AI 行程规划）- 必需
+
+**地址**：https://platform.deepseek.com/
+
+**步骤**：注册 → 创建 API Key → 复制（格式：`sk-xxxxx`）
+
+**免费额度**：新用户有免费 Token
+
+#### 2. 高德地图 Web服务（地理编码）- 必需
+
+**地址**：https://console.amap.com/
+
+**步骤**：注册 → 创建应用 → 选择 **Web服务** 类型 → 获取 Key
+
+**免费额度**：30万次/天
+
+---
+
+### 📋 功能验证清单
+
+- [ ] 用户注册和登录
+- [ ] AI 生成旅行计划（需 DeepSeek Key）
+- [ ] 语音输入（需浏览器麦克风权限）
+- [ ] 地图导航（景点标记、连线、箭头）
+- [ ] 费用管理和统计
+
+---
+
+### 📚 详细文档
+
+- 📖 **快速运行指南.md** - 给验收人员的完整指南 ⭐⭐⭐⭐⭐
 - 📖 **BUILD_AND_RUN.md** - 完整的构建和运行指南
 - 📖 **DELIVERY_PACKAGE.md** - 交付包说明
-- 📖 **DOCKER_SETUP_WINDOWS.md** - Windows Docker 安装指南
+- 📖 **REBUILD_GUIDE.md** - 镜像重建指南
 
-### 环境变量说明
+---
+
+### 💡 重要说明
 
 **已内置在镜像中**（无需配置）：
-- Supabase（数据库）
-- 科大讯飞（语音识别）
-- 高德地图（地图显示）
+- ✅ Supabase（数据库）
+- ✅ 科大讯飞（语音识别）
+- ✅ 高德地图（地图显示）
 
 **需要运行时提供**（仅2个）：
-- `DEEPSEEK_API_KEY` - AI 行程规划
-- `AMAP_WEB_SERVICE_KEY` - 地理编码服务
+- 🔧 `DEEPSEEK_API_KEY` - AI 行程规划
+- 🔧 `AMAP_WEB_SERVICE_KEY` - 地理编码服务
+
+**镜像信息**：
+- 文件大小：67 MB（压缩）
+- 镜像大小：294 MB（运行时）
+- 更新时间：2025-11-03
+
+---
+
+### 🐛 常见问题
+
+**Q: 容器无法启动？**
+```bash
+docker logs ai-travel-planner  # 查看日志
+```
+
+**Q: AI 生成不工作？**
+- 检查 DEEPSEEK_API_KEY 是否配置正确
+
+**Q: 地图不显示？**
+- 检查 AMAP_WEB_SERVICE_KEY 是否配置正确
+
+**Q: 语音识别不工作？**
+- 浏览器需要授权麦克风权限
+
+---
+
+### 🔄 从源码构建（开发者）
+
+如果您想使用自己的 API Keys 重新构建镜像：
+
+```bash
+# 1. 编辑 docker-compose.build.local.yml
+# 2. 重新构建
+docker-compose -f docker-compose.build.local.yml up -d --build
+# 3. 导出新镜像
+docker save -o my-image.tar ai-travel-planner:latest
+```
+
+详细步骤参考：**REBUILD_GUIDE.md**
 
 ## 开发阶段规划
 
