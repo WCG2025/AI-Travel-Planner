@@ -55,14 +55,14 @@ export function ItineraryMap({ plan, apiKey, className = '' }: ItineraryMapProps
     setAMap(amapInstance);
   }, []);
 
-  // 加载行程数据到地图
+  // 加载行程数据到地图（当地图ready或筛选天数改变时）
   useEffect(() => {
     if (!map || !amap || !plan.itinerary || plan.itinerary.length === 0) {
       return;
     }
 
     loadItineraryData();
-  }, [map, amap, plan]);
+  }, [map, amap, plan, selectedDay]); // 添加 selectedDay 依赖，切换天数时重新加载
 
   // 加载行程数据
   const loadItineraryData = async () => {
