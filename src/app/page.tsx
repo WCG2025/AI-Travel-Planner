@@ -228,11 +228,11 @@ export default function Home() {
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="text-sm text-gray-600">
-                  第二阶段开发完成 ✅ 用户认证系统
+                  AI 旅行规划师 - 让旅行更智能
                 </span>
               </div>
               <div className="text-sm text-gray-500">
-                Next.js 15 + TypeScript + Tailwind CSS + Supabase
+                © 2025 AI Travel Planner. All rights reserved.
               </div>
             </div>
           </div>
