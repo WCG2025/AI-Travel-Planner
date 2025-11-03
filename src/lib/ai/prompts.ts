@@ -86,12 +86,30 @@ ${input.specialRequirements ? `\n特殊要求：${input.specialRequirements}` : 
       "activities": [
         {
           "time": "09:00",
-          "title": "活动名称",
+          "title": "上午景点",
           "description": "详细描述",
           "location": "地点名",
           "cost": 100,
           "type": "attraction",
           "tips": ["建议1", "建议2"]
+        },
+        {
+          "time": "12:30",
+          "title": "午餐",
+          "description": "午餐安排",
+          "location": "餐厅名",
+          "cost": 80,
+          "type": "meal",
+          "tips": ["推荐菜品"]
+        },
+        {
+          "time": "18:30",
+          "title": "晚餐",
+          "description": "晚餐安排",
+          "location": "餐厅名",
+          "cost": 120,
+          "type": "meal",
+          "tips": ["推荐菜品"]
         }
       ],
       "estimatedCost": 500
@@ -110,7 +128,7 @@ ${input.specialRequirements ? `\n特殊要求：${input.specialRequirements}` : 
 4. 数字不加引号："cost": 100 ✅  "cost": "100" ❌
 5. 使用英文冒号和逗号：":"  ","  ✅  "：" "，" ❌
 6. type必须是：attraction, meal, transportation, accommodation, shopping, entertainment, other
-7. 每天3-5个活动，保持简洁
+7. 每天3-6个活动，保持简洁
 8. 直接输出JSON，不要markdown标记
 
 **重要**：整个JSON从头到尾格式必须完全一致，后面不能偷懒！`;

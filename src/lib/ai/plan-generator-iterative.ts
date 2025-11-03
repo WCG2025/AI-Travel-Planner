@@ -45,10 +45,10 @@ export async function generateTravelPlanIterative(
     onProgress?.(day, days + 1, `正在生成第 ${day} 天行程...`);
     console.log(`📅 开始生成第 ${day}/${days} 天...`);
     
-    // 生成当天行程（最多重试3次，带错误反馈）
+    // 生成当天行程（最多重试10次，带错误反馈）
     let dayItinerary: ItineraryDay | null = null;
     let retries = 0;
-    const maxRetries = 3;
+    const maxRetries = 10;
     let lastError: string | null = null;
     let lastResponse: string | null = null;
     
@@ -104,7 +104,7 @@ export async function generateTravelPlanIterative(
   
   let summary: any = null;
   let summaryRetries = 0;
-  const maxSummaryRetries = 3;
+  const maxSummaryRetries = 10;
   let lastSummaryError: string | null = null;
   let lastSummaryResponse: string | null = null;
   
@@ -230,6 +230,7 @@ async function generateSingleDay(
 4. 所有字符串值必须双引号："北京"不是北京
 5. 数字不加引号：100不是"100"
 6. 【重要】每天的景点必须不同，严禁出现重复景点！
+7. 【重要】需要为每天的行程安排住宿酒店。
 
 【示例-正确】
 {"day":1,"title":"探索北京","activities":[{"time":"09:00","title":"天安门","description":"游览天安门广场","location":"天安门","address":"北京市东城区东长安街","cost":0,"type":"attraction","tips":["早起避开人群"]}],"estimatedCost":200}
@@ -262,12 +263,12 @@ async function generateSingleDay(
 目的地：${input.destination}
 ${input.startDate ? `日期：${dateStr}` : `相对日期：${dateStr}`}
 预算：${input.budget || 1000}元
-要求：3-4个活动
+要求：3-5个活动
 
 ${visitedList.length > 0 ? `⚠️ 严禁重复以下景点：${visitedList.join('、')}\n` : ''}
 
 返回格式(严格遵守)：
-{"day":${dayNumber}${input.startDate ? `,"date":"${dateStr}"` : ''},"title":"主题","activities":[{"time":"09:00","title":"景点名","description":"简介","location":"景点名称","address":"详细地址","cost":50,"type":"attraction","tips":["提示1","提示2"]}],"estimatedCost":300}
+{"day":${dayNumber}${input.startDate ? `,"date":"${dateStr}"` : ''},"title":"主题","activities":[{"time":"09:00","title":"景点名","description":"简介","location":"景点名称","address":"详细地址","cost":50,"type":"attraction","tips":["提示1","提示2"]},{"time":"12:00","title":"午餐","description":"午餐安排","location":"餐厅名","address":"详细地址","cost":80,"type":"meal","tips":["推荐菜品"]},{"time":"18:30","title":"晚餐","description":"晚餐安排","location":"餐厅名","address":"详细地址","cost":120,"type":"meal","tips":["推荐菜品"]}],"estimatedCost":300}
 
 重要说明：
 - ${input.startDate ? 'date字段必须是 yyyy-MM-dd 格式的具体日期' : 'date字段可以省略，因为使用相对日期模式'}
@@ -276,6 +277,8 @@ ${visitedList.length > 0 ? `⚠️ 严禁重复以下景点：${visitedList.join
 - address字段应为详细地址（如"南京市玄武区石象路7号"），用于地理编码
 - 【硬性要求】每个景点/活动的title和location必须与之前的天不同，严禁重复！
 - 【硬性要求】如果发现重复，必须选择其他景点替代
+- 【时间安排】请合理安排时间，不要总是使用固定时间（09:00, 12:00, 14:00, 16:30, 19:00），可以根据活动内容灵活调整
+- 【餐饮安排】必须包含午餐和晚餐安排，晚餐时间建议在18:00-20:00之间
 直接返回JSON，不要其他内容`;
 
   // 如果有上次的错误，添加错误反馈
