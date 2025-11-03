@@ -12,73 +12,66 @@
 
 ## 🚀 快速开始
 
-### 方式一：使用 docker-compose（推荐）
+### ⚠️ 重要提醒：环境变量构建
 
-#### 1. 创建 `.env` 文件
+**本项目必须使用 `docker-compose.build.yml` 来构建镜像**，这样才能在构建时正确注入所有必要的环境变量（特别是 `NEXT_PUBLIC_*` 变量）。
 
-复制以下内容到 `.env` 文件（与 `docker-compose.yml` 同目录）：
-
-```env
-# ============================================
-# AI Travel Planner 环境变量配置
-# ============================================
-# 
-# 重要提示：
-# 1. 请将所有 your_xxx 替换为您自己申请的 API Key
-# 2. 保存文件后，使用 docker-compose up 启动
-# 3. 所有 API Key 必须有效，否则相关功能无法使用
-#
-# ============================================
-
-# ==========================================
-# Supabase 配置（必需）
-# ==========================================
-# 从 https://app.supabase.com 获取
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# ==========================================
-# DeepSeek AI 配置（必需）
-# ==========================================
-# 从 https://platform.deepseek.com/ 获取
-DEEPSEEK_API_KEY=your_deepseek_api_key
-
-# ==========================================
-# 科大讯飞语音识别配置（必需）
-# ==========================================
-# 从 https://console.xfyun.cn/ 获取
-NEXT_PUBLIC_XFYUN_APP_ID=your_xfyun_app_id
-NEXT_PUBLIC_XFYUN_API_KEY=your_xfyun_api_key
-NEXT_PUBLIC_XFYUN_API_SECRET=your_xfyun_api_secret
-
-# ==========================================
-# 高德地图配置（必需）
-# ==========================================
-# 从 https://console.amap.com/ 获取
-
-# JS API Key - 用于前端地图显示
-# 申请类型：Web端（JS API）
-NEXT_PUBLIC_AMAP_KEY=your_amap_js_api_key
-
-# Web服务 API Key - 用于服务端地理编码
-# 申请类型：Web服务
-AMAP_WEB_SERVICE_KEY=your_amap_web_service_key
-
-# 可选：安全密钥
-NEXT_PUBLIC_AMAP_SECRET=
+如果使用普通的 `docker build` 命令构建，会出现 Supabase 配置错误：
+```
+Supabase 配置错误: Object
+@supabase/ssr: Your project's URL and API key are required to create a Supabase client!
 ```
 
-#### 2. 启动容器
+### 方式一：使用 docker-compose.build.yml（推荐且必需）
+
+#### 1. 编辑 `docker-compose.build.yml` 文件
+
+打开项目根目录下的 `docker-compose.build.yml` 文件，将所有 `your_xxx` 替换为您的真实 API Key：
+
+```yaml
+# docker-compose.build.yml
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # 构建时注入的环境变量（必需）
+        NEXT_PUBLIC_SUPABASE_URL: your_supabase_project_url
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: your_supabase_anon_key
+        NEXT_PUBLIC_XFYUN_APP_ID: your_xfyun_app_id
+        NEXT_PUBLIC_XFYUN_API_KEY: your_xfyun_api_key
+        NEXT_PUBLIC_XFYUN_API_SECRET: your_xfyun_api_secret
+        NEXT_PUBLIC_AMAP_KEY: your_amap_js_api_key
+        NEXT_PUBLIC_AMAP_SECRET: your_amap_secret
+    image: ai-travel-planner:latest
+    container_name: ai-travel-planner
+    ports:
+      - "3000:3000"
+    environment:
+      # 运行时环境变量
+      - DEEPSEEK_API_KEY=your_deepseek_api_key
+      - AMAP_WEB_SERVICE_KEY=your_amap_web_service_key
+      - NODE_ENV=production
+    restart: unless-stopped
+```
+
+#### 2. 构建并启动容器
 
 ```bash
+# 构建镜像（会自动注入环境变量）
+docker-compose -f docker-compose.build.yml build
+
 # 启动服务（后台运行）
-docker-compose up -d
+docker-compose -f docker-compose.build.yml up -d
 
 # 查看日志
-docker-compose logs -f
+docker-compose -f docker-compose.build.yml logs -f
 
 # 停止服务
-docker-compose down
+docker-compose -f docker-compose.build.yml down
 ```
 
 #### 3. 访问应用
@@ -90,70 +83,118 @@ http://localhost:3000
 
 ---
 
-### 方式二：直接使用 Docker 命令
+### 方式二：使用预构建的 Docker 镜像文件
 
-#### 1. 构建镜像
+如果您有预构建的 `ai-travel-planner-docker-image.tar` 文件：
+
+#### 步骤 1. 加载镜像
 
 ```bash
-docker build -t ai-travel-planner:latest .
+# 加载预构建的镜像
+docker load -i ai-travel-planner-docker-image.tar
 ```
 
-#### 2. 运行容器
+### 步骤 2：创建环境变量文件
+
+在**同一目录**创建 `.env` 文件，内容如下：
+
+```env
+DEEPSEEK_API_KEY=your_deepseek_api_key
+AMAP_WEB_SERVICE_KEY=your_amap_web_service_key
+```
+
+**说明**：
+- 这两个 API Key 需要您自己申请（见下文）
+- 其他所有配置已内置在镜像中
+- 如果仅用于测试，可以使用作者提供的测试 Key（见下文）
+
+---
+
+### 步骤 3：启动应用
+
+#### 方法 A：使用 docker run（简单快速）
 
 ```bash
 docker run -d \
   --name ai-travel-planner \
   -p 3000:3000 \
-  -e NEXT_PUBLIC_SUPABASE_URL=your_supabase_url \
-  -e NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key \
-  -e DEEPSEEK_API_KEY=your_deepseek_key \
-  -e NEXT_PUBLIC_XFYUN_APP_ID=your_xfyun_appid \
-  -e NEXT_PUBLIC_XFYUN_API_KEY=your_xfyun_key \
-  -e NEXT_PUBLIC_XFYUN_API_SECRET=your_xfyun_secret \
-  -e NEXT_PUBLIC_AMAP_KEY=your_amap_js_key \
+  -e DEEPSEEK_API_KEY=your_deepseek_api_key \
   -e AMAP_WEB_SERVICE_KEY=your_amap_web_service_key \
   ai-travel-planner:latest
 ```
 
-#### 3. 查看容器
+**Windows PowerShell 格式**：
+```powershell
+docker run -d `
+  --name ai-travel-planner `
+  -p 3000:3000 `
+  -e DEEPSEEK_API_KEY=your_deepseek_api_key `
+  -e AMAP_WEB_SERVICE_KEY=your_amap_web_service_key `
+  ai-travel-planner:latest
+```
+
+#### 方法 B：使用 docker-compose（推荐）
+
+创建 `docker-compose.yml` 文件：
+
+```yaml
+version: '3.8'
+
+services:
+  app:
+    image: ai-travel-planner:latest
+    container_name: ai-travel-planner
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    restart: unless-stopped
+```
+
+然后启动：
 
 ```bash
-# 查看运行状态
-docker ps
-
-# 查看日志
-docker logs -f ai-travel-planner
-
-# 停止容器
-docker stop ai-travel-planner
-
-# 删除容器
-docker rm ai-travel-planner
+docker-compose up -d
 ```
 
 ---
 
-### 方式三：从阿里云拉取镜像（推荐给评审老师）
+### 步骤 4：访问应用
 
-#### 1. 拉取镜像
+打开浏览器，访问：
 
-```bash
-# 从阿里云镜像仓库拉取（替换为实际地址）
-docker pull registry.cn-hangzhou.aliyuncs.com/your-namespace/ai-travel-planner:latest
+```
+http://localhost:3000
 ```
 
-#### 2. 创建 `.env` 文件
+**应该看到**：AI Travel Planner 登录页面
 
-同方式一，创建包含所有 API Key 的 `.env` 文件
+---
 
-#### 3. 使用 docker-compose 启动
+### ❌ 不推荐的方式：直接使用 Docker 命令
+
+**注意**：以下方式可能导致环境变量注入问题，不推荐使用。
+
+#### 问题示例
 
 ```bash
-# 修改 docker-compose.yml 中的镜像地址
-image: registry.cn-hangzhou.aliyuncs.com/your-namespace/ai-travel-planner:latest
+# ❌ 这种方式会导致 Supabase 配置错误
+docker build -t ai-travel-planner:latest .
+```
 
-# 启动
-docker-compose up -d
+如果必须使用 Docker 命令，需要传递所有构建参数：
+
+```bash
+# ✅ 正确的构建方式（但仍推荐使用 docker-compose）
+docker build \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL=your_supabase_url \
+  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key \
+  --build-arg NEXT_PUBLIC_XFYUN_APP_ID=your_xfyun_appid \
+  --build-arg NEXT_PUBLIC_XFYUN_API_KEY=your_xfyun_key \
+  --build-arg NEXT_PUBLIC_XFYUN_API_SECRET=your_xfyun_secret \
+  --build-arg NEXT_PUBLIC_AMAP_KEY=your_amap_js_key \
+  --build-arg NEXT_PUBLIC_AMAP_SECRET=your_amap_secret \
+  -t ai-travel-planner:latest .
 ```
 
 ---
@@ -253,7 +294,47 @@ curl http://localhost:3000/api/health
 
 ## 🐛 故障排查
 
-### 问题 1：容器启动失败
+### 问题 1：Supabase 配置错误（最常见）
+
+**症状**：
+```
+Supabase 配置错误: Object
+@supabase/ssr: Your project's URL and API key are required to create a Supabase client!
+```
+
+**原因**：使用了错误的构建方式，环境变量没有在构建时正确注入。
+
+**解决方案**：
+1. **必须使用 `docker-compose.build.local.yml` 构建**：
+   ```bash
+   # ❌ 错误方式
+   docker build -t ai-travel-planner:latest .
+   
+   # ✅ 正确方式
+   docker-compose -f docker-compose.build.local.yml build
+   ```
+
+2. **检查 `docker-compose.build.local.yml` 中的构建参数**：
+   ```yaml
+   build:
+     args:
+       NEXT_PUBLIC_SUPABASE_URL: your_actual_supabase_url  # 确保不是 your_xxx
+       NEXT_PUBLIC_SUPABASE_ANON_KEY: your_actual_anon_key
+   ```
+
+3. **重新构建镜像**：
+   ```bash
+   # 删除旧镜像
+   docker rmi ai-travel-planner:latest
+   
+   # 重新构建
+   docker-compose -f docker-compose.build.local.yml build --no-cache
+   
+   # 启动
+   docker-compose -f docker-compose.build.local.yml up -d
+   ```
+
+### 问题 2：容器启动失败
 
 **症状**：`docker ps` 看不到容器
 
@@ -263,7 +344,7 @@ curl http://localhost:3000/api/health
 docker ps -a
 
 # 查看容器日志
-docker logs ai-travel-planner
+docker-compose -f docker-compose.build.local.yml logs
 ```
 
 **常见原因**：
@@ -271,17 +352,17 @@ docker logs ai-travel-planner
 - 端口 3000 已被占用
 - Docker 资源不足
 
-### 问题 2：应用无法访问
+### 问题 3：应用无法访问
 
 **症状**：浏览器显示"无法访问此网站"
 
 **排查**：
 ```bash
+# 检查容器状态
+docker-compose -f docker-compose.build.local.yml ps
+
 # 检查端口映射
 docker port ai-travel-planner
-
-# 检查容器网络
-docker network inspect bridge
 ```
 
 **解决**：
@@ -289,14 +370,17 @@ docker network inspect bridge
 - 检查防火墙设置
 - 使用 `localhost` 或 `127.0.0.1` 访问
 
-### 问题 3：功能不正常
+### 问题 4：功能不正常
 
 **症状**：页面打开但功能异常
 
 **排查**：
 1. 检查环境变量是否正确设置
 2. 查看浏览器控制台错误
-3. 查看容器日志：`docker logs ai-travel-planner`
+3. 查看容器日志：
+   ```bash
+   docker-compose -f docker-compose.build.local.yml logs -f
+   ```
 
 **常见问题**：
 - API Key 无效或过期
@@ -356,12 +440,16 @@ docker network inspect bridge
    ```
 
 2. **配置环境变量**：
-   - 复制 `.env.example` 为 `.env`
-   - 填入您的 API Keys
+   - 编辑 `docker-compose.build.local.yml` 文件
+   - 将所有 `your_xxx` 替换为您的真实 API Keys
 
-3. **启动应用**：
+3. **构建并启动应用**：
    ```bash
-   docker-compose up -d
+   # 构建镜像（重要：必须使用此文件）
+   docker-compose -f docker-compose.build.local.yml build
+   
+   # 启动服务
+   docker-compose -f docker-compose.build.local.yml up -d
    ```
 
 4. **访问应用**：
@@ -369,7 +457,32 @@ docker network inspect bridge
 
 5. **查看日志**（如有问题）：
    ```bash
-   docker-compose logs -f
+   docker-compose -f docker-compose.build.local.yml logs -f
+   ```
+
+### ⚠️ 重要提醒
+
+**请务必使用 `docker-compose.build.local.yml` 来构建镜像**，否则会出现 Supabase 配置错误。这是因为 Next.js 的 `NEXT_PUBLIC_*` 环境变量必须在构建时注入，而不能在运行时注入。
+
+### 使用预构建镜像的方式
+
+如果您有 `ai-travel-planner-docker-image.tar` 文件：
+
+1. **加载镜像**：
+   ```bash
+   docker load -i ai-travel-planner-docker-image.tar
+   ```
+
+2. **使用 docker-compose.prod.yml**：
+   ```bash
+   # 复制配置文件
+   cp docker-compose.build.local.yml docker-compose.prod.yml
+   
+   # 编辑 docker-compose.prod.yml，移除 build 部分，只保留 image
+   # 将所有环境变量移到 environment 部分
+   
+   # 启动
+   docker-compose -f docker-compose.prod.yml up -d
    ```
 
 ### API Key 说明
@@ -394,22 +507,60 @@ docker network inspect bridge
 
 ## 🏗️ 从源码构建
 
-### 本地构建
+### ⚠️ 重要：必须使用正确的构建方式
+
+**本项目必须使用 `docker-compose.build.local.yml` 来构建**，不能使用普通的 `docker build` 命令。
+
+### 正确的构建方式
 
 ```bash
 # 1. 克隆仓库
 git clone <repository-url>
 cd AI-Travel-Planner
 
-# 2. 构建镜像
+# 2. 编辑 docker-compose.build.local.yml
+# 将所有 your_xxx 替换为真实的 API Keys
+
+# 3. 构建镜像（正确方式）
+docker-compose -f docker-compose.build.local.yml build
+
+# 4. 启动容器
+docker-compose -f docker-compose.build.local.yml up -d
+```
+
+### ❌ 错误的构建方式
+
+```bash
+# ❌ 这种方式会导致 Supabase 配置错误
 docker build -t ai-travel-planner:latest .
 
-# 3. 运行容器（配置环境变量）
-docker run -d \
-  -p 3000:3000 \
-  --env-file .env \
-  ai-travel-planner:latest
+# ❌ 这种方式也不推荐
+docker run -d -p 3000:3000 --env-file .env ai-travel-planner:latest
 ```
+
+### 为什么必须使用 docker-compose.build.local.yml？
+
+1. **Next.js 构建时需要环境变量**：
+   - `NEXT_PUBLIC_*` 变量必须在构建时注入
+   - 运行时注入这些变量无效
+
+2. **Dockerfile 中的 ARG 声明**：
+   ```dockerfile
+   ARG NEXT_PUBLIC_SUPABASE_URL
+   ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+   # ... 其他 ARG
+   
+   ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+   ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+   ```
+
+3. **docker-compose.build.local.yml 中的构建参数**：
+   ```yaml
+   build:
+     args:
+       NEXT_PUBLIC_SUPABASE_URL: your_actual_url
+       NEXT_PUBLIC_SUPABASE_ANON_KEY: your_actual_key
+   ```
 
 ### 构建时间
 
@@ -466,21 +617,29 @@ docker run -d \
 # 1. 拉取最新代码
 git pull
 
-# 2. 重新构建镜像
-docker-compose build
+# 2. 重新构建镜像（使用正确的方式）
+docker-compose -f docker-compose.build.local.yml build --no-cache
 
 # 3. 重启容器
-docker-compose up -d
+docker-compose -f docker-compose.build.local.yml up -d
 ```
 
-### 或从镜像仓库更新
+### 使用新的镜像文件更新
+
+如果有新的 `ai-travel-planner-docker-image.tar` 文件：
 
 ```bash
-# 1. 拉取最新镜像
-docker pull registry.cn-hangzhou.aliyuncs.com/your-namespace/ai-travel-planner:latest
+# 1. 停止当前容器
+docker-compose -f docker-compose.build.local.yml down
 
-# 2. 重启容器
-docker-compose up -d
+# 2. 删除旧镜像
+docker rmi ai-travel-planner:latest
+
+# 3. 加载新镜像
+docker load -i ai-travel-planner-docker-image.tar
+
+# 4. 启动容器
+docker-compose -f docker-compose.prod.yml up -d
 ```
 
 ---
@@ -494,11 +653,14 @@ docker-compose up -d
 ### 日志位置
 
 ```bash
-# 容器日志
-docker logs ai-travel-planner
+# 容器日志（使用正确的 compose 文件）
+docker-compose -f docker-compose.build.local.yml logs
 
 # 实时日志
-docker logs -f ai-travel-planner --tail 100
+docker-compose -f docker-compose.build.local.yml logs -f --tail 100
+
+# 特定服务日志
+docker logs ai-travel-planner -f
 ```
 
 ### 进入容器调试
