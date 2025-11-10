@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { PlanManager } from '@/components/features/travel-plan/plan-manager';
+import { NavigationService } from '@/components/features/navigation/navigation-service';
 
 // 强制动态渲染，不在构建时预渲染
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,9 @@ export default async function DashboardPage() {
 
       {/* 旅行计划管理 */}
       <PlanManager />
+
+      {/* 导航服务（公交路径查询） */}
+      <NavigationService />
     </div>
   );
 }
